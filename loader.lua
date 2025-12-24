@@ -101,7 +101,7 @@ local function reloadScript(message)
     -- Reset flags first so main script can run again
     getgenv().BeastHubLoaded = false
     getgenv().BeastHubRayfield = nil
- 
+
     -- Destroy existing Rayfield UI safely
     if Rayfield and Rayfield.Destroy then
         Rayfield:Destroy()
@@ -110,7 +110,7 @@ local function reloadScript(message)
         game:GetService("CoreGui").Rayfield:Destroy()
         print("Rayfield destroyed in CoreGui")
     end
- 
+
     -- Reload main script from Pastebin
     if getgenv().BeastHubLink then
         local ok, err = pcall(function()
@@ -231,7 +231,7 @@ local Toggle_autoBuySeedsTier1_selected = Shops:CreateToggle({
         if Value then
             if #SelectedSeeds > 0 then
                 --print("[BeastHub] Auto-buying selected seeds:", table.concat(SelectedSeeds, ", "))
-                
+
                 -- pass a function for dynamic check
                 myFunctions.buyItemsLive(
                     game:GetService("ReplicatedStorage").GameEvents.BuySeedStock,
@@ -612,6 +612,19 @@ local Input_delayToHatchEggs = PetEggs:CreateInput({
     end,
 })
 
+-- Position Preset Dropdown
+local eggPositionOptions = {"Left - stacked", "Right - stacked", "Left - compressed", "Right - compressed"}
+local Dropdown_eggPosition = PetEggs:CreateDropdown({
+    Name = "Select Egg Position",
+    Options = eggPositionOptions,
+    CurrentOption = {"Left - stacked"},
+    MultipleOptions = false,
+    Flag = "eggPositionPreset",
+    Callback = function(Options)
+        getgenv().selectedEggPosition = Options[1]
+    end,
+})
+
 -- Listen for Notification event once for too close eggs
 local tooCloseFlag = false
 local petAlreadyInMachineFlag = false
@@ -669,32 +682,100 @@ end
 
 
 -- relative egg positions (local space relative to spawn point)
-local eggOffsets = {
-    Vector3.new(-36, 0, -18),
-    Vector3.new(-27, 0, -18),
-    Vector3.new(-18, 0, -18),
-    Vector3.new(-9, 0, -18),
+local eggPositionPresets = {
+    ["Left - stacked"] = {
+        Vector3.new(-36, 0, -18),
+        Vector3.new(-27, 0, -18),
+        Vector3.new(-18, 0, -18),
+        Vector3.new(-9, 0, -18),
 
-    Vector3.new(-36, 0, -33),
-    Vector3.new(-27, 0, -33),
-    Vector3.new(-18, 0, -33),
-    Vector3.new(-9, 0, -33),
+        Vector3.new(-36, 0, -33),
+        Vector3.new(-27, 0, -33),
+        Vector3.new(-18, 0, -33),
+        Vector3.new(-9, 0, -33),
 
-    Vector3.new(-36, 0, -48),
-    Vector3.new(-27, 0, -48),
-    Vector3.new(-18, 0, -48),
-    Vector3.new(-9, 0, -48),
+        Vector3.new(-36, 0, -48),
+        Vector3.new(-27, 0, -48),
+        Vector3.new(-18, 0, -48),
+        Vector3.new(-9, 0, -48),
 
-    Vector3.new(-36, 0, -63),
-    Vector3.new(-27, 0, -63),
-    Vector3.new(-18, 0, -63),
-    Vector3.new(-9, 0, -63),
+        Vector3.new(-36, 0, -63),
+        Vector3.new(-27, 0, -63),
+        Vector3.new(-18, 0, -63),
+        Vector3.new(-9, 0, -63),
+    },
+    ["Right - stacked"] = {
+        Vector3.new(36, 0, -18),
+        Vector3.new(27, 0, -18),
+        Vector3.new(18, 0, -18),
+        Vector3.new(9, 0, -18),
+
+        Vector3.new(36, 0, -33),
+        Vector3.new(27, 0, -33),
+        Vector3.new(18, 0, -33),
+        Vector3.new(9, 0, -33),
+
+        Vector3.new(36, 0, -48),
+        Vector3.new(27, 0, -48),
+        Vector3.new(18, 0, -48),
+        Vector3.new(9, 0, -48),
+
+        Vector3.new(36, 0, -63),
+        Vector3.new(27, 0, -63),
+        Vector3.new(18, 0, -63),
+        Vector3.new(9, 0, -63),
+    },
+   ["Left - compressed"] = {
+        Vector3.new(-18, 0, -12),
+        Vector3.new(-14, 0, -12),
+        Vector3.new(-10, 0, -12),
+        Vector3.new(-6, 0, -12),
+
+        Vector3.new(-18, 0, -18),
+        Vector3.new(-14, 0, -18),
+        Vector3.new(-10, 0, -18),
+        Vector3.new(-6, 0, -18),
+
+        Vector3.new(-18, 0, -24),
+        Vector3.new(-14, 0, -24),
+        Vector3.new(-10, 0, -24),
+        Vector3.new(-6, 0, -24),
+
+        Vector3.new(-18, 0, -30),
+        Vector3.new(-14, 0, -30),
+        Vector3.new(-10, 0, -30),
+        Vector3.new(-6, 0, -30),
+    },
+    ["Right - compressed"] = {
+        Vector3.new(18, 0, -12),
+        Vector3.new(14, 0, -12),
+        Vector3.new(10, 0, -12),
+        Vector3.new(6, 0, -12),
+
+        Vector3.new(18, 0, -18),
+        Vector3.new(14, 0, -18),
+        Vector3.new(10, 0, -18),
+        Vector3.new(6, 0, -18),
+
+        Vector3.new(18, 0, -24),
+        Vector3.new(14, 0, -24),
+        Vector3.new(10, 0, -24),
+        Vector3.new(6, 0, -24),
+
+        Vector3.new(18, 0, -30),
+        Vector3.new(14, 0, -30),
+        Vector3.new(10, 0, -30),
+        Vector3.new(6, 0, -30),
+    },
 }
 
 -- convert to world positions
 local function getFarmEggLocations()
     local spawnCFrame = getFarmSpawnCFrame()
     if not spawnCFrame then return {} end
+
+    local selectedPosition = getgenv().selectedEggPosition or "Left - stacked"
+    local eggOffsets = eggPositionPresets[selectedPosition] or eggPositionPresets["Left - stacked"]
 
     local locations = {}
     for _, offset in ipairs(eggOffsets) do
@@ -751,7 +832,7 @@ local Toggle_autoPlaceEggs = PetEggs:CreateToggle({
                             else
                                 currentEggsInFarm = currentEggsInFarm + 1
                             end
-                            
+
                         end
                     end
 
@@ -771,7 +852,7 @@ PetEggs:CreateButton({
     Name = "Click to HATCH ALL",
     Callback = function()
         print("[BeastHub] Hatching eggs...")
-        
+
         local ReplicatedStorage = game:GetService("ReplicatedStorage")
         local PetEggService = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("PetEggService")
 
@@ -869,7 +950,7 @@ local Dropdown_sealsLoadoutNum = PetEggs:CreateDropdown({
     end,
 })
 local suggestedAutoSellList = {
-    "Ostrich", "Peacock", "Capybara", "Scarlet Macaw",
+    "Ostrich", "Dog", "Golden Lab", "Bunny", "Peacock", "Capybara", "Scarlet Macaw",
     "Bat", "Bone Dog", "Spider", "Black Cat",
     "Oxpecker", "Zebra", "Giraffe", "Rhino",
     "Tree Frog", "Hummingbird", "Iguana", "Chimpanzee",
@@ -1197,12 +1278,12 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                 end
 
 
-                
+
                 local petOdds = myFunctions.getPetOdds()
                 local rarePets = myFunctions.getRarePets(petOdds)
 
                 while smartAutoHatchingEnabled do
-                
+
                     --check eggs
                     local myPetEggs = myFunctions.getMyFarmPetEggs()
                     local readyCounter = 0
@@ -1220,7 +1301,7 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                         local rareOrHugeFound
                         local ReplicatedStorage = game:GetService("ReplicatedStorage")
                         local PetEggService = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("PetEggService")
-                                                            
+
 
                         --all eggs now must start with koi loadout, infinite loadout has been patched 10/24/25
                         beastHubNotify("Switching to Kois", "", 8)
@@ -1250,7 +1331,7 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                     -- local stringKG = string.match(text, ".*=%s*<font.-'>(.-)</font>")
                                                     local petName = text:match('rgb%(%s*0,%s*255,%s*0%s*%)">(.-)</font>%s*=')
                                                     local stringKG = text:match("= (%d+%.?%d*)")
-                                                    
+
                                                     -- print("petName")
                                                     -- print(petName)
                                                     -- print("stringKG")
@@ -1281,7 +1362,7 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                             warn("rarePets is not a table")
                                                             return
                                                         end
-                                                        
+
                                                         -- check if Huge
                                                         local currentNumberKG = tonumber(stringKG)
                                                         if not currentNumberKG then
@@ -1374,7 +1455,7 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                 return
                             end
                         end
-                        
+
                         --=======================================
                         --trigger auto sell first before back to eagles
                         task.wait(5)
@@ -1666,7 +1747,7 @@ local Toggle_autoMutation = Pets:CreateToggle({
     Callback = function(Value)
         autoPetMutationEnabled = Value
         local autoMutatePetsV2 --new function using getData
-        
+
         if autoPetMutationEnabled then --declare function code only when condition is right
             --turn off auto smart hatching instantly
             Toggle_smartAutoHatch:Set(false)
@@ -1692,11 +1773,11 @@ local Toggle_autoMutation = Pets:CreateToggle({
                 beastHubNotify("Missing setup!", "Please recheck loadouts", 10)
                 return
             end
-            
+
             autoMutatePetsV2 = function(selectedPetForAutoMutation, mutations, onComplete)
                 --local functions
                 local HttpService = game:GetService("HttpService")
-                
+
                 local function getPlayerData()
                     local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
                     local logs = dataService:GetData()
@@ -1872,7 +1953,7 @@ local Toggle_autoMutation = Pets:CreateToggle({
                         end
                     end
                 end
-                
+
                 for _, pet in pairs(unfavs) do 
                     local curPet = pet.PetType
                     -- local uid = pet.Uuid
@@ -1894,7 +1975,7 @@ local Toggle_autoMutation = Pets:CreateToggle({
                             break
                         end
                     end
-                    
+
                     if curMutation == nil then
                         --beastHubNotify("Pet found has no mutation yet", "", 3)
                     end
@@ -2084,7 +2165,7 @@ local Toggle_autoMutation = Pets:CreateToggle({
                 end
             end
 
-            
+
             --main logic
             if autoPetMutationEnabled and not autoPetMutationThread then
                 autoPetMutationThread = task.spawn(function()
@@ -2150,7 +2231,7 @@ local Dropdown_petListForAutoLevel = Pets:CreateDropdown({
     MultipleOptions = true,
     Flag = "autoLevelPets", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
     Callback = function(Options)
-        
+
     end,
 })
 Pets:CreateButton({
@@ -2205,7 +2286,7 @@ local Toggle_autoLevel = Pets:CreateToggle({
         local targetLevel = tonumber(targetLevelForAutoLevel.CurrentValue) or nil
         local isNum = targetLevel
         local targetPetsForAutoLevel = Dropdown_petListForAutoLevel.CurrentOption or nil 
-        
+
         -- Wait until Rayfield sets up the values (or timeout after 10s)
         local timeout = 3
         while timeout > 0 and (
@@ -2218,7 +2299,7 @@ local Toggle_autoLevel = Pets:CreateToggle({
             targetLevel = tonumber(targetLevelForAutoLevel.CurrentValue)
             isNum = targetLevel
         end
-        
+
         --actual checker
         if levelingLoady == nil or levelingLoady == "None" or Dropdown_petListForAutoLevel.CurrentOption == nil or Dropdown_petListForAutoLevel.CurrentOption[1] == "None" or not isNum then
             beastHubNotify("Setup missing", "Please also make sure you select Leveling Loadout", 3)
@@ -2457,13 +2538,13 @@ toggle_autoNM = Pets:CreateToggle({
 
             autoNM = function(selectedPetForAutoNM, onComplete)
                 local HttpService = game:GetService("HttpService")
-            
+
                 local function getPlayerData()
                     local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
                     local logs = dataService:GetData()
                     return logs
                 end
-            
+
                 local function getPetInventory()
                     local playerData = getPlayerData()
                     if playerData.PetsData and playerData.PetsData.PetInventory and playerData.PetsData.PetInventory.Data then
@@ -2650,8 +2731,8 @@ toggle_autoNM = Pets:CreateToggle({
                         end
                     end
 
-                    
-                    
+
+
                     if autoNMenabled and curPet == selectedPetForAutoNM then
                         if curMutation ~= "Nightmare" then
                             beastHubNotify("Pet found: "..curPet, curMutation or "", 5)
@@ -2681,7 +2762,7 @@ toggle_autoNM = Pets:CreateToggle({
                                 task.wait(10)
                                 curLevel = getCurrentPetLevelByUid(uid)
                             end
-                            
+
                             --unequip once ready
                             local args = {
                                 [1] = "UnequipPet";
@@ -2728,7 +2809,7 @@ toggle_autoNM = Pets:CreateToggle({
                                 end
 
                                 task.wait(5)
-                                
+
                                 --unequip shard
                                 game.Players.LocalPlayer.Character.Humanoid:UnequipTools()
 
@@ -2779,7 +2860,7 @@ toggle_autoNM = Pets:CreateToggle({
                                     task.wait(1)
                                 end
 
-                                
+
 
                             end
                             return
@@ -2822,7 +2903,7 @@ toggle_autoNM = Pets:CreateToggle({
                                 beastHubNotify(msg, "", 5)
                                 return
                             end
-                        
+
                         end) --end function call
                         task.wait(2)
                     end --end while
@@ -3122,7 +3203,7 @@ toggle_autoEle = Pets:CreateToggle({
                         }
                         game:GetService("ReplicatedStorage"):WaitForChild("GameEvents", 9e9):WaitForChild("PetsService", 9e9):FireServer(unpack(args))
                         task.wait(1)
-                        
+
                         --monitor level
                         while autoEleEnabled and curLevel < targetLevel do
                             beastHubNotify("Current Pet age: "..curLevel, "waiting to hit age "..targetLevel.."..",3)
@@ -3156,7 +3237,7 @@ toggle_autoEle = Pets:CreateToggle({
                                 -- local delayInSecs = (delayInMins * 60) or nil
                                 beastHubNotify("Ready for Elephant!", "Waiting for Elephant skill..",5)
                                 task.wait(5)
-                                
+
                                 --insert stacking code here = PATCHED!
                                 -- if toyToUse ~= "Do not use STACKING" and curLevel >= targetLevel then 
                                 --     --unequip target pet first to avoid cooldown abilities from affecting elephants
@@ -3168,7 +3249,7 @@ toggle_autoEle = Pets:CreateToggle({
                                 --     }
                                 --     game:GetService("ReplicatedStorage"):WaitForChild("GameEvents", 9e9):WaitForChild("PetsService", 9e9):FireServer(unpack(args))
                                 --     task.wait(.2) 
-                                    
+
                                 --     --count check first how many to boost
                                 --     local safeStackingCounter = 0
                                 --     local projectedBaseKG = curBaseKG + .11
@@ -3201,7 +3282,7 @@ toggle_autoEle = Pets:CreateToggle({
                                 --         end
                                 --     end
 
-                                    
+
                                 --     --boost after countdown
                                 --     if autoEleEnabled then
                                 --         game.Players.LocalPlayer.Character.Humanoid:UnequipTools()
@@ -3255,7 +3336,7 @@ toggle_autoEle = Pets:CreateToggle({
                                 -- local updatedKG = tostring(curBaseKG + 0.1) --static adding of KG instead of get base KG
                                 curBaseKG = getCurrentPetKGByUid(uid)
                                 local updatedKG = string.format("%.2f", curBaseKG * 1.1)
-                                
+
                                 beastHubNotify("Sending webhook","",3)
                                 local playerName = game.Players.LocalPlayer.Name
                                 local webhookMsg = "[BeastHub] "..playerName.." | Auto Elephant result: "..curPet.."="..updatedKG.."KG"
@@ -3265,7 +3346,7 @@ toggle_autoEle = Pets:CreateToggle({
                         end
                         return
                     end
-                    
+
                 end --end for loop
 
                 if petFound == false then 
@@ -3300,7 +3381,7 @@ toggle_autoEle = Pets:CreateToggle({
                                 beastHubNotify(msg, "", 5)
                                 return
                             end
-                        
+
                         end) --end function call
                         task.wait(.1)
                     end --end while
@@ -3494,7 +3575,7 @@ local petAgeKGsacrifice = Pets:CreateDropdown({
     MultipleOptions = false,
     Flag = "petAgeKGsacrifice", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
     Callback = function(Options)
-    
+
     end,
 })
 
@@ -3595,7 +3676,7 @@ Pets:CreateToggle({
             local petIdToSacrifice = getPetIdByNameAndFilterKg(sacrificePetNameParam, tonumber(petAgeKGsacrifice.CurrentOption[1]), tonumber(petAgeLevelSacrifice.CurrentValue), selectedIdParam)
             -- print("petIdToSacrifice")
             -- print(tostring(petIdToSacrifice)) 
-            
+
             if petIdToSacrifice and autoPetAgeBreakEnabled then
                 beastHubNotify("Worthy sacrifice found!","",3)
                 task.wait(2)
@@ -3660,7 +3741,7 @@ Pets:CreateToggle({
                             beastHubNotify("Target Pet submitted to breaker", "",3)
                             task.wait(2)    
                         end
-                        
+
 
                         --put sacrifice and start
                         if autoPetAgeBreakEnabled then
@@ -3674,7 +3755,7 @@ Pets:CreateToggle({
                             beastHubNotify("Breaker machine started!", "", 3)
                             task.wait(1)
                         end
-                        
+
 
                         --monitor machine for newly submitted
                         while autoPetAgeBreakEnabled do 
@@ -3694,14 +3775,14 @@ Pets:CreateToggle({
 
                     end
                 end
-            
+
             else
                 beastHubNotify("No worthy sacrifice.", "", 3)
                 autoPetAgeBreakEnabled = false
                 autoPetAgeBreakThread = nil
             end
 
-            
+
             beastHubNotify("Auto Pet Age Break cycle done", "", 3)
         end
 
@@ -3711,11 +3792,11 @@ Pets:CreateToggle({
                 while autoPetAgeBreakEnabled do
                     autoBreaker(sacrificePetName, selectedId)
                 end
-                
+
             end) --end thread
         end 
 
-        
+
     end,
 })
 Pets:CreateDivider()
@@ -3739,7 +3820,7 @@ Pets:CreateButton({
         local data = getPlayerData()
         local ReplicatedStorage = game:GetService("ReplicatedStorage")
         local PetBoostService = ReplicatedStorage.GameEvents.PetBoostService -- RemoteEvent 
-            
+
         for _, id in ipairs(data) do
             -- print(id)
             PetBoostService:FireServer(
@@ -3796,7 +3877,7 @@ local Toggle_bhubESP = PetEggs:CreateToggle({
         -- Turn ON
         if bhubESPenabled and not bhubESPthread then
             bhubEsp = function()
-            
+
             end--end function
 
             bhubESPthread = task.spawn(function()
@@ -3832,7 +3913,7 @@ local Toggle_bhubESP = PetEggs:CreateToggle({
                     else
                         -- print("waiting or ESP folder for some eggs")
                     end
-                    
+
                     if #petEggs == 0 then
                         --print("[BeastHub] No PetEggs found in your farm!")
                         return
@@ -3853,8 +3934,8 @@ local Toggle_bhubESP = PetEggs:CreateToggle({
                                 return nil
                             end
                         end
-                        
-                        
+
+
 
                         local saveSlots = getSaveSlots()
                         local selectedSlot = saveSlots.SelectedSlot
@@ -3907,7 +3988,7 @@ local Toggle_bhubESP = PetEggs:CreateToggle({
                                 petKG = eggData.PetKG
                             end
                         end
-                        
+
                         --skip non ready egg
                         if petKG ~= nil then
                             if tonumber(petKG) >= hugeThreshold then
@@ -3942,7 +4023,7 @@ local Toggle_bhubESP = PetEggs:CreateToggle({
                             else
                                 label.Text = '<font color="rgb(0,255,0)">' .. petName .. '</font> = ' .. petKG .. 'kg'
                             end
-                            
+
                             label.TextColor3 = Color3.fromRGB(0, 255, 0) -- green
                             label.TextStrokeTransparency = 0.5
                             label.TextScaled = false  -- auto resize
