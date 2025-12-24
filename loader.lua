@@ -612,6 +612,18 @@ local Input_delayToHatchEggs = PetEggs:CreateInput({
     end,
 })
 
+--position dropdown for egg placement
+PetEggs:CreateDropdown({
+    Name = "Position",
+    Options = {"Left - stacked", "Right - stacked", "Left - compressed", "Right - compressed"},
+    CurrentOption = {"Left - stacked"},
+    MultipleOptions = false,
+    Flag = "eggPlacementPosition",
+    Callback = function(Options)
+        selectedPosition = Options[1] or "Left - stacked"
+    end,
+})
+
 -- Listen for Notification event once for too close eggs
 local tooCloseFlag = false
 local petAlreadyInMachineFlag = false
@@ -669,32 +681,102 @@ end
 
 
 -- relative egg positions (local space relative to spawn point)
-local eggOffsets = {
-    Vector3.new(-36, 0, -18),
-    Vector3.new(-27, 0, -18),
-    Vector3.new(-18, 0, -18),
-    Vector3.new(-9, 0, -18),
+local eggPositionPresets = {
+    ["Left - stacked"] = {
+        Vector3.new(-36, 0, -18),
+        Vector3.new(-27, 0, -18),
+        Vector3.new(-18, 0, -18),
+        Vector3.new(-9, 0, -18),
 
-    Vector3.new(-36, 0, -33),
-    Vector3.new(-27, 0, -33),
-    Vector3.new(-18, 0, -33),
-    Vector3.new(-9, 0, -33),
+        Vector3.new(-36, 0, -33),
+        Vector3.new(-27, 0, -33),
+        Vector3.new(-18, 0, -33),
+        Vector3.new(-9, 0, -33),
 
-    Vector3.new(-36, 0, -48),
-    Vector3.new(-27, 0, -48),
-    Vector3.new(-18, 0, -48),
-    Vector3.new(-9, 0, -48),
+        Vector3.new(-36, 0, -48),
+        Vector3.new(-27, 0, -48),
+        Vector3.new(-18, 0, -48),
+        Vector3.new(-9, 0, -48),
 
-    Vector3.new(-36, 0, -63),
-    Vector3.new(-27, 0, -63),
-    Vector3.new(-18, 0, -63),
-    Vector3.new(-9, 0, -63),
+        Vector3.new(-36, 0, -63),
+        Vector3.new(-27, 0, -63),
+        Vector3.new(-18, 0, -63),
+        Vector3.new(-9, 0, -63),
+    },
+    ["Right - stacked"] = {
+        Vector3.new(36, 0, -18),
+        Vector3.new(27, 0, -18),
+        Vector3.new(18, 0, -18),
+        Vector3.new(9, 0, -18),
+
+        Vector3.new(36, 0, -33),
+        Vector3.new(27, 0, -33),
+        Vector3.new(18, 0, -33),
+        Vector3.new(9, 0, -33),
+
+        Vector3.new(36, 0, -48),
+        Vector3.new(27, 0, -48),
+        Vector3.new(18, 0, -48),
+        Vector3.new(9, 0, -48),
+
+        Vector3.new(36, 0, -63),
+        Vector3.new(27, 0, -63),
+        Vector3.new(18, 0, -63),
+        Vector3.new(9, 0, -63),
+    },
+    ["Left - compressed"] = {
+        Vector3.new(-18, 0, -12),
+        Vector3.new(-14, 0, -12),
+        Vector3.new(-10, 0, -12),
+        Vector3.new(-6, 0, -12),
+
+        Vector3.new(-18, 0, -18),
+        Vector3.new(-14, 0, -18),
+        Vector3.new(-10, 0, -18),
+        Vector3.new(-6, 0, -18),
+
+        Vector3.new(-18, 0, -24),
+        Vector3.new(-14, 0, -24),
+        Vector3.new(-10, 0, -24),
+        Vector3.new(-6, 0, -24),
+
+        Vector3.new(-18, 0, -30),
+        Vector3.new(-14, 0, -30),
+        Vector3.new(-10, 0, -30),
+        Vector3.new(-6, 0, -30),
+    },
+    ["Right - compressed"] = {
+        Vector3.new(18, 0, -12),
+        Vector3.new(14, 0, -12),
+        Vector3.new(10, 0, -12),
+        Vector3.new(6, 0, -12),
+
+        Vector3.new(18, 0, -18),
+        Vector3.new(14, 0, -18),
+        Vector3.new(10, 0, -18),
+        Vector3.new(6, 0, -18),
+
+        Vector3.new(18, 0, -24),
+        Vector3.new(14, 0, -24),
+        Vector3.new(10, 0, -24),
+        Vector3.new(6, 0, -24),
+
+        Vector3.new(18, 0, -30),
+        Vector3.new(14, 0, -30),
+        Vector3.new(10, 0, -30),
+        Vector3.new(6, 0, -30),
+    },
 }
+
+-- selected position variable
+local selectedPosition = "Left - stacked"
 
 -- convert to world positions
 local function getFarmEggLocations()
     local spawnCFrame = getFarmSpawnCFrame()
     if not spawnCFrame then return {} end
+
+    local eggOffsets = eggPositionPresets[selectedPosition] or eggPositionPresets["Left - stacked"]
 
     local locations = {}
     for _, offset in ipairs(eggOffsets) do
