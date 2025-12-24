@@ -586,6 +586,31 @@ local Input_numberOfEggsToPlace = PetEggs:CreateInput({
     end,
 })
 
+--delay to place eggs
+local delayToPlaceEggs = 0.5
+local Input_delayToPlaceEggs = PetEggs:CreateInput({
+    Name = "Delay to place eggs (default 0.5)",
+    CurrentValue = "0.5",
+    PlaceholderText = "seconds",
+    RemoveTextAfterFocusLost = false,
+    Flag = "delayToPlaceEggs",
+    Callback = function(Text)
+        delayToPlaceEggs = tonumber(Text) or 0.5
+    end,
+})
+
+--delay to hatch eggs
+local delayToHatchEggs = 0.05
+local Input_delayToHatchEggs = PetEggs:CreateInput({
+    Name = "Delay to hatch eggs (default 0.05)",
+    CurrentValue = "0.05",
+    PlaceholderText = "seconds",
+    RemoveTextAfterFocusLost = false,
+    Flag = "delayToHatchEggs",
+    Callback = function(Text)
+        delayToHatchEggs = tonumber(Text) or 0.05
+    end,
+})
 
 -- Listen for Notification event once for too close eggs
 local tooCloseFlag = false
@@ -719,7 +744,7 @@ local Toggle_autoPlaceEggs = PetEggs:CreateToggle({
                             local args = { "CreateEgg", location }
                             game:GetService("ReplicatedStorage").GameEvents.PetEggService:FireServer(unpack(args))
                             --add algo here to trap 'too close to another egg and dont increment'
-                            task.wait(0.5)
+                            task.wait(delayToPlaceEggs)
                             if tooCloseFlag then
                                 tooCloseFlag = false -- reset flag for next iteration
                                 -- skip increment
@@ -813,7 +838,7 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete)
                 task.wait(0.2) -- ensure pet equips before selling
                 SellPet_RE:FireServer(item.Name)
                 print("Sold:", item.Name)
-                task.wait(0.3)
+                task.wait(delayToSell)
             end
         end
     end
@@ -954,6 +979,19 @@ local Dropdown_sellBelowKG = PetEggs:CreateDropdown({
     end,
 })
 
+--delay to sell
+local delayToSell = 0.05
+local Input_delayToSell = PetEggs:CreateInput({
+    Name = "Delay to sell (default 0.05)",
+    CurrentValue = "0.05",
+    PlaceholderText = "seconds",
+    RemoveTextAfterFocusLost = false,
+    Flag = "delayToSell",
+    Callback = function(Text)
+        delayToSell = tonumber(Text) or 0.05
+    end,
+})
+
 PetEggs:CreateButton({
     Name = "Click to SELL",
     Callback = function()
@@ -978,7 +1016,7 @@ PetEggs:CreateParagraph({
     Content = "1.) Setup your Auto place Eggs above and turn on toggle for auto place eggs.\n2.) Setup your selected pets for Auto Sell above.\n3.) Selected designated loadouts below.\n4.) Turn on Speedhub Egg ESP, then turn on Egg ESP support below"
 })
 local koiLoady
--- local brontoLoady
+local brontoLoady
 local incubatingLoady
 local webhookRares
 local webhookHuge
@@ -1007,17 +1045,28 @@ PetEggs:CreateDropdown({
         koiLoady = tonumber(Options[1])
     end,
 })
--- PetEggs:CreateDropdown({
---     Name = "Bronto Loadout",
---     Options = {"None", "1", "2", "3"},
---     CurrentOption = {},
---     MultipleOptions = false,
---     Flag = "brontoLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
---     Callback = function(Options)
---         --if not Options or not Options[1] then return end
---         brontoLoady = tonumber(Options[1])
---     end,
--- })
+
+local autoBrontoAntiHatchEnabled = false
+PetEggs:CreateToggle({
+    Name = "Auto Bronto Anti Hatch List?",
+    CurrentValue = false,
+    Flag = "autoBrontoAntiHatch",
+    Callback = function(Value)
+        autoBrontoAntiHatchEnabled = Value
+    end,
+})
+
+PetEggs:CreateDropdown({
+    Name = "Select Bronto Loadout",
+    Options = {"None", "1", "2", "3", "4", "5", "6"},
+    CurrentOption = {"None"},
+    MultipleOptions = false,
+    Flag = "brontoLoadoutNum",
+    Callback = function(Options)
+        --if not Options or not Options[1] then return end
+        brontoLoady = tonumber(Options[1])
+    end,
+})
 local skipHatchAboveKG = 0
 PetEggs:CreateDropdown({
     Name = "Skip hatch Above KG (any egg):",
