@@ -804,10 +804,34 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete, delayToSe
     -- end, 0.05)
 
     delayToSell = delayToSell or 0.05
+    
+    --validation
+    if not targetPets or #targetPets == 0 then
+        warn("[BeastHub] No target pets selected for selling!")
+        return
+    end
+    
+    if not weightTargetBelow or weightTargetBelow == 0 then
+        warn("[BeastHub] Invalid weight target below!")
+        return
+    end
+    
     local player = game.Players.LocalPlayer
+    if not player or not player.Character then
+        warn("[BeastHub] Player or character not found!")
+        return
+    end
+    
     local backpack = player:WaitForChild("Backpack")
     local SellPet_RE = game:GetService("ReplicatedStorage").GameEvents.SellPet_RE
-        player.Character.Humanoid:UnequipTools() --unequip last pet held from hatch
+    
+    if not SellPet_RE then
+        warn("[BeastHub] SellPet_RE not found!")
+        return
+    end
+    
+    local soldCount = 0
+    player.Character.Humanoid:UnequipTools() --unequip last pet held from hatch
 
     for _, item in ipairs(backpack:GetChildren()) do
         local b = item:GetAttribute("b") -- pet type
@@ -833,11 +857,14 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete, delayToSe
                 player.Character.Humanoid:EquipTool(item)
                 task.wait(0.2) -- ensure pet equips before selling
                 SellPet_RE:FireServer(item.Name)
-                print("Sold:", item.Name)
+                print("[BeastHub] Sold:", item.Name)
+                soldCount = soldCount + 1
                 task.wait(delayToSell)
             end
         end
     end
+    
+    print("[BeastHub] Auto Sell completed. Sold " .. soldCount .. " pets.")
 
     -- Call the callback AFTER finishing all pets
     if typeof(onComplete) == "function" then
@@ -862,7 +889,7 @@ local Dropdown_sealsLoadoutNum = PetEggs:CreateDropdown({
     Flag = "sealsLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
     Callback = function(Options)
         --if not Options or not Options[1] then return end
-        sealsLoady = tonumber(Options[1])
+        sealsLoady = Options[1]
     end,
 })
 local suggestedAutoSellList = {
@@ -991,15 +1018,35 @@ local Input_delayToSell = PetEggs:CreateInput({
 PetEggs:CreateButton({
     Name = "Click to SELL",
     Callback = function()
+        --validation
+        if not selectedPetsForAutoSell or #selectedPetsForAutoSell == 0 then
+            beastHubNotify("Error!", "No pets selected for selling", 3)
+            return
+        end
+        
+        if not sellBelow or sellBelow == 0 then
+            beastHubNotify("Error!", "Please set weight threshold (Below KG)", 3)
+            return
+        end
+        
         --print(tostring(sellBelow))
         if sealsLoady and sealsLoady ~= "None" then
             print("Switching to seals loadout first")
-            myFunctions.switchToLoadout(sealsLoady)
-                        beastHubNotify("Waiting for Seals to load", "Auto Sell", "5")
+            myFunctions.switchToLoadout(tonumber(sealsLoady))
+            beastHubNotify("Waiting for Seals to load", "Auto Sell", "5")
             task.wait(6)
         end
-        autoSellPets(selectedPetsForAutoSell, sellBelow, nil, delayToSell)
-                beastHubNotify("Auto Sell Done", "Successful", "2")
+        
+        local success, err = pcall(function()
+            autoSellPets(selectedPetsForAutoSell, sellBelow, nil, delayToSell)
+        end)
+        
+        if success then
+            beastHubNotify("Auto Sell Done", "Successful", "2")
+        else
+            beastHubNotify("Auto Sell Error!", tostring(err), 5)
+            warn("[BeastHub] Auto Sell error: " .. tostring(err))
+        end
     end,
 })
 PetEggs:CreateDivider()
@@ -1063,7 +1110,7 @@ PetEggs:CreateToggle({
 local skipHatchRareAboveKG = "0"
 PetEggs:CreateDropdown({
     Name = "Skip hatch Rare Above KG:",
-    Options = {"0", "1", "1.5", "1.6", "1.7", "1.8", "1.9","2", "2.1", "2.2", "2.3", "2.4", "2.5"},
+    Options = {"0", "1", "1.5", "1.6", "1.7", "1.8", "1.9", "2", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8", "2.9", "3", "3.1", "3.2", "3.3", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "4"},
     CurrentOption = {"0"},
     MultipleOptions = false,
     Flag = "skipHatchRareAboveKG", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
