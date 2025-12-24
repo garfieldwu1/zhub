@@ -767,21 +767,25 @@ local eggOffsetPresets = {
         Vector3.new(6, 0, -30),
     },
 }
+local selectedPositionPattern = "Left - stacked"
 
+-- convert to world positions
 local function getFarmEggLocations()
     local spawnCFrame = getFarmSpawnCFrame()
     if not spawnCFrame then return {} end
 
-    local eggOffsets = eggPositionPresets[selectedPosition] or eggPositionPresets["Left - stacked"]
-
     local locations = {}
-    for _, offset in ipairs(eggOffsets) do
+    local currentOffsets = eggOffsetPresets[selectedPositionPattern] or eggOffsetPresets["Left - stacked"]
+    
+    for _, offset in ipairs(currentOffsets) do
         table.insert(locations, spawnCFrame:PointToWorldSpace(offset))
     end
     return locations
 end
 
 --=====================
+
+
 --toggle auto place eggs
 local autoPlaceEggsThread -- store the task
 local autoPlaceEggsEnabled = false
@@ -797,41 +801,20 @@ local Toggle_autoPlaceEggs = PetEggs:CreateToggle({
         end
 
         if Value then
-            -- Get selected egg name
-            local selectedEgg = Dropdown_eggToPlace.CurrentOption[1] or ""
-            if selectedEgg == "" then
-                beastHubNotify("Error", "Please select an egg type first!", 3)
-                return
-            end
-
-            -- If egg type changed, recapture the original value
-            if trackedEggName ~= selectedEgg then
-                trackedEggName = selectedEgg
-                originalEggCount = getTotalEggCount(trackedEggName)
-                originalCaptured = true
-            elseif not originalCaptured then
-                -- First time capture
-                trackedEggName = selectedEgg
-                originalEggCount = getTotalEggCount(trackedEggName)
-                originalCaptured = true
-            end
-            updateEggStatus(originalEggCount, getTotalEggCount(trackedEggName), getPlacedEggCountByName(trackedEggName))
-
             beastHubNotify("Auto place eggs: ON", "Max Eggs to place: "..tostring(eggsToPlaceInput), 4)
             autoPlaceEggsEnabled = true
-            local autoPlaceEggLocations = getFarmEggLocations() --off setting for dynamic farm location
+            
             autoPlaceEggsThread = task.spawn(function()
                 while autoPlaceEggsEnabled do
+                    local autoPlaceEggLocations = getFarmEggLocations() -- get fresh locations inside the loop or just before placing
                     local maxFarmEggs = eggsToPlaceInput
                     local currentEggsInFarm = getFarmEggCount()
-
-                    -- Update Egg Status GUI: originalEggCount (FIXED) vs currentInventory (REAL-TIME)
-                    local currentInventory = getTotalEggCount(trackedEggName)
-                    local currentPlaced = getPlacedEggCountByName(trackedEggName)
-                    updateEggStatus(originalEggCount, currentInventory, currentPlaced)
+                    --print("maxFarmEggs:", maxFarmEggs)
+                    --print("currentEggsInFarm:", currentEggsInFarm)
 
                     if currentEggsInFarm < maxFarmEggs then
                         for _, location in ipairs(autoPlaceEggLocations) do
+                            if not autoPlaceEggsEnabled then break end
                             if currentEggsInFarm >= maxFarmEggs then
                                 break
                             end
@@ -850,12 +833,7 @@ local Toggle_autoPlaceEggs = PetEggs:CreateToggle({
                             else
                                 currentEggsInFarm = currentEggsInFarm + 1
                             end
-
-                            -- Update Egg Status GUI: originalEggCount (FIXED) vs currentInventory (REAL-TIME)
-                            currentInventory = getTotalEggCount(trackedEggName)
-                            currentPlaced = getPlacedEggCountByName(trackedEggName)
-                            updateEggStatus(originalEggCount, currentInventory, currentPlaced)
-
+                            
                         end
                     end
 
@@ -865,10 +843,6 @@ local Toggle_autoPlaceEggs = PetEggs:CreateToggle({
         else
             autoPlaceEggsEnabled = false
             autoPlaceEggsThread = nil
-            -- Show final status: originalEggCount (FIXED) vs final inventory
-            local finalInventory = getTotalEggCount(trackedEggName)
-            local finalPlaced = getPlacedEggCountByName(trackedEggName)
-            updateEggStatus(originalEggCount, finalInventory, finalPlaced)
             beastHubNotify("Auto place eggs: OFF", "", 2)
         end
     end,
