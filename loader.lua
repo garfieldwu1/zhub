@@ -940,7 +940,7 @@ local sealsLoady
 local Paragraph_selectedPets = PetEggs:CreateParagraph({Title = "Auto Sell Pets:", Content = "No pets selected."})
 local Dropdown_sealsLoadoutNum = PetEggs:CreateDropdown({
     Name = "Select 'Seals' loadout",
-    Options = {"None", "1", "2", "3"},
+    Options = {"None", "1", "2", "3", "4", "5", "6"},
     CurrentOption = {},
     MultipleOptions = false,
     Flag = "sealsLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
@@ -1106,7 +1106,7 @@ local sessionHatchCount = 0
 
 PetEggs:CreateDropdown({
     Name = "Incubating/Eagles Loadout",
-    Options = {"None", "1", "2", "3"},
+    Options = {"None", "1", "2", "3", "4", "5", "6"},
     CurrentOption = {},
     MultipleOptions = false,
     Flag = "incubatingLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
@@ -1117,7 +1117,7 @@ PetEggs:CreateDropdown({
 })
 PetEggs:CreateDropdown({
     Name = "Koi Loadout",
-    Options = {"None", "1", "2", "3"},
+    Options = {"None", "1", "2", "3", "4", "5", "6"},
     CurrentOption = {},
     MultipleOptions = false,
     Flag = "koiLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
@@ -1648,7 +1648,7 @@ Pets:CreateSection("Auto Pet Mutation")
 local phoenixLoady
 Pets:CreateDropdown({
     Name = "Phoenix Loadout",
-    Options = {"None", "1", "2", "3"},
+    Options = {"None", "1", "2", "3", "4", "5", "6"},
     CurrentOption = {},
     MultipleOptions = false,
     Flag = "phoenixLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
@@ -1660,7 +1660,7 @@ Pets:CreateDropdown({
 local levelingLoady
 Pets:CreateDropdown({
     Name = "Leveling Loadout (Free 1 pet space)",
-    Options = {"None", "1", "2", "3"},
+    Options = {"None", "1", "2", "3", "4", "5", "6"},
     CurrentOption = {},
     MultipleOptions = false,
     Flag = "levelingLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
@@ -1672,7 +1672,7 @@ Pets:CreateDropdown({
 local golemLoady
 Pets:CreateDropdown({
     Name = "Golem Loadout",
-    Options = {"None", "1", "2", "3"},
+    Options = {"None", "1", "2", "3", "4", "5", "6"},
     CurrentOption = {},
     MultipleOptions = false,
     Flag = "golemLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
@@ -2480,7 +2480,7 @@ local targetLevelForNM = Pets:CreateInput({
 local horsemanLoady
 Pets:CreateDropdown({
     Name = "Horseman Loadout (Free 1 pet space)",
-    Options = {"None", "1", "2", "3"},
+    Options = {"None", "1", "2", "3", "4", "5", "6"},
     CurrentOption = {},
     MultipleOptions = false,
     Flag = "horsemanLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
@@ -2973,7 +2973,7 @@ local targetKGForEle = Pets:CreateInput({
 local elephantLoady
 Pets:CreateDropdown({
     Name = "Elephant Loadout",
-    Options = {"None", "1", "2", "3"},
+    Options = {"None", "1", "2", "3", "4", "5", "6"},
     CurrentOption = {},
     MultipleOptions = false,
     Flag = "elephantLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
@@ -3833,6 +3833,12 @@ Pets:CreateButton({
 })
 Pets:CreateDivider()
 
+-- ================== LOAD SEPARATED MODULES ==================
+-- Load Automation module
+local automationModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/Adobo1/Testing/refs/heads/main/Zhub_Automation2.lua"))()
+automationModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, nil, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
+
+    
 --Other Egg settings
 PetEggs:CreateSection("Egg settings")
 -- Egg ESP support --
