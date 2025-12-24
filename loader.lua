@@ -3477,7 +3477,7 @@ Pets:CreateToggle({
             or petAgeLevelSacrifice.CurrentValue == ""
         ) do
             task.wait(1)
-            timeout -= 1
+            timeout = timeout - 1
         end
 
         --checkers here, final check, works for sudden reconnection
@@ -3759,15 +3759,9 @@ local Toggle_bhubESP = PetEggs:CreateToggle({
                     end
 
                     -- ✅ If every egg already has ESP, skip heavy processing
-                    if allHaveESP then
-                        -- print("stopped ESP checking, all have ESP already")
-                        task.wait(2)
-                        continue
-                    else
+                    if not allHaveESP then
                         -- print("waiting or ESP folder for some eggs")
-                    end
-                    
-                    if #petEggs == 0 then
+                        if #petEggs == 0 then
                         --print("[BeastHub] No PetEggs found in your farm!")
                         return
                     else
@@ -3843,17 +3837,14 @@ local Toggle_bhubESP = PetEggs:CreateToggle({
                         end
                         
                         --skip non ready egg
-                        if petKG == nil then
-                            continue
-                        end
-                        
-                        if tonumber(petKG) >= hugeThreshold then
-                            isHuge = true
-                        end
+                        if petKG ~= nil then
+                            if tonumber(petKG) >= hugeThreshold then
+                                isHuge = true
+                            end
 
-                        -- ✅ Clear previous ESP if exists
-                        local old = egg:FindFirstChild("BhubESP")
-                        if old then old:Destroy() end
+                            -- ✅ Clear previous ESP if exists
+                            local old = egg:FindFirstChild("BhubESP")
+                            if old then old:Destroy() end
                             -- ✅ Create new ESP folder
                             local espFolder = Instance.new("Folder")
                             espFolder.Name = "BhubESP"
@@ -3875,7 +3866,6 @@ local Toggle_bhubESP = PetEggs:CreateToggle({
                             label.Size = UDim2.new(1, 0, 1, 0)
                             if isHuge then
                                 label.Text = '<font color="rgb(255,0,0)"><b>PALDO!</b></font>\n<font color="rgb(0,255,0)">' .. petName .. '</font> = ' .. petKG .. 'kg'
-
                             else
                                 label.Text = '<font color="rgb(0,255,0)">' .. petName .. '</font> = ' .. petKG .. 'kg'
                             end
@@ -3887,6 +3877,7 @@ local Toggle_bhubESP = PetEggs:CreateToggle({
                             label.Font = Enum.Font.SourceSans
                             label.Parent = billboard
                         end
+                    end
                     end
                     task.wait(2)
                 end
@@ -3968,7 +3959,7 @@ local function startHatchMonitor()
 
             for _, egg in pairs(myPetEggs) do
                 if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
-                    readyCounter += 1
+                    readyCounter = readyCounter + 1
                 end
             end
 
@@ -3986,7 +3977,7 @@ local function startHatchMonitor()
             local totalWait = 0
             while totalWait < 60 and not hatchMonitorStop do
                 task.wait(1)
-                totalWait += 1
+                totalWait = totalWait + 1
             end
         end
         hatchMonitorThread = nil -- mark as done
