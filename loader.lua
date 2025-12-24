@@ -580,6 +580,32 @@ local Input_numberOfEggsToPlace = PetEggs:CreateInput({
     end,
 })
 
+--delay to place eggs
+local delayToPlaceEggs = 0.5
+local Input_delayToPlaceEggs = PetEggs:CreateInput({
+    Name = "Delay to place eggs (default 0.5)",
+    CurrentValue = "0.5",
+    PlaceholderText = "seconds",
+    RemoveTextAfterFocusLost = false,
+    Flag = "delayToPlaceEggs",
+    Callback = function(Text)
+        delayToPlaceEggs = tonumber(Text) or 0.5
+    end,
+})
+
+--delay to hatch eggs
+local delayToHatchEggs = 0.05
+local Input_delayToHatchEggs = PetEggs:CreateInput({
+    Name = "Delay to hatch eggs (default 0.05)",
+    CurrentValue = "0.05",
+    PlaceholderText = "seconds",
+    RemoveTextAfterFocusLost = false,
+    Flag = "delayToHatchEggs",
+    Callback = function(Text)
+        delayToHatchEggs = tonumber(Text) or 0.05
+    end,
+})
+
 
 -- Listen for Notification event once for too close eggs
 local tooCloseFlag = false
@@ -713,7 +739,7 @@ local Toggle_autoPlaceEggs = PetEggs:CreateToggle({
                             local args = { "CreateEgg", location }
                             game:GetService("ReplicatedStorage").GameEvents.PetEggService:FireServer(unpack(args))
                             --add algo here to trap 'too close to another egg and dont increment'
-                            task.wait(0.5)
+                            task.wait(delayToPlaceEggs)
                             if tooCloseFlag then
                                 tooCloseFlag = false -- reset flag for next iteration
                                 -- skip increment
@@ -771,12 +797,13 @@ local petListNamesOnlyAndSorted = myFunctions.getPetList()
 table.sort(petListNamesOnlyAndSorted)
 
     --function to auto sell
-local function autoSellPets(targetPets, weightTargetBelow, onComplete)
+local function autoSellPets(targetPets, weightTargetBelow, onComplete, delayToSell)
     -- USAGE:
     -- autoSellPets({"Bunny", "Dog"}, 3, function()
     --     print("Selling complete, now do next step!")
-    -- end)
+    -- end, 0.05)
 
+    delayToSell = delayToSell or 0.05
     local player = game.Players.LocalPlayer
     local backpack = player:WaitForChild("Backpack")
     local SellPet_RE = game:GetService("ReplicatedStorage").GameEvents.SellPet_RE
@@ -807,7 +834,7 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete)
                 task.wait(0.2) -- ensure pet equips before selling
                 SellPet_RE:FireServer(item.Name)
                 print("Sold:", item.Name)
-                task.wait(0.3)
+                task.wait(delayToSell)
             end
         end
     end
@@ -824,6 +851,7 @@ end
 local selectedPets --for UI paragraph
 local selectedPetsForAutoSell = {} --container for dropdown
 local sealsLoady
+local delayToSell = 0.05
 
 local Paragraph_selectedPets = PetEggs:CreateParagraph({Title = "Auto Sell Pets:", Content = "No pets selected."})
 local Dropdown_sealsLoadoutNum = PetEggs:CreateDropdown({
@@ -948,6 +976,18 @@ local Dropdown_sellBelowKG = PetEggs:CreateDropdown({
     end,
 })
 
+--delay to sell
+local Input_delayToSell = PetEggs:CreateInput({
+    Name = "Delay to sell (default 0.05)",
+    CurrentValue = "0.05",
+    PlaceholderText = "seconds",
+    RemoveTextAfterFocusLost = false,
+    Flag = "delayToSell",
+    Callback = function(Text)
+        delayToSell = tonumber(Text) or 0.05
+    end,
+})
+
 PetEggs:CreateButton({
     Name = "Click to SELL",
     Callback = function()
@@ -958,7 +998,7 @@ PetEggs:CreateButton({
                         beastHubNotify("Waiting for Seals to load", "Auto Sell", "5")
             task.wait(6)
         end
-        autoSellPets(selectedPetsForAutoSell, sellBelow)
+        autoSellPets(selectedPetsForAutoSell, sellBelow, nil, delayToSell)
                 beastHubNotify("Auto Sell Done", "Successful", "2")
     end,
 })
@@ -972,8 +1012,9 @@ PetEggs:CreateParagraph({
     Content = "1.) Setup your Auto place Eggs above and turn on toggle for auto place eggs.\n2.) Setup your selected pets for Auto Sell above.\n3.) Selected designated loadouts below.\n4.) Turn on Speedhub Egg ESP, then turn on Egg ESP support below"
 })
 local koiLoady
--- local brontoLoady
+local brontoLoady
 local incubatingLoady
+local autoBrontoAntiHatchListEnabled = false
 local webhookRares
 local webhookHuge
 local webhookURL
@@ -1001,17 +1042,24 @@ PetEggs:CreateDropdown({
         koiLoady = tonumber(Options[1])
     end,
 })
--- PetEggs:CreateDropdown({
---     Name = "Bronto Loadout",
---     Options = {"None", "1", "2", "3"},
---     CurrentOption = {},
---     MultipleOptions = false,
---     Flag = "brontoLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
---     Callback = function(Options)
---         --if not Options or not Options[1] then return end
---         brontoLoady = tonumber(Options[1])
---     end,
--- })
+PetEggs:CreateDropdown({
+    Name = "Select Bronto Loadout",
+    Options = {"none", "1", "2", "3", "4", "5", "6"},
+    CurrentOption = {"none"},
+    MultipleOptions = false,
+    Flag = "brontoLoadoutNum",
+    Callback = function(Options)
+        brontoLoady = Options[1]
+    end,
+})
+PetEggs:CreateToggle({
+    Name = "Auto Bronto Anti Hatch List?",
+    CurrentValue = false,
+    Flag = "autoBrontoAntiHatchList",
+    Callback = function(Value)
+        autoBrontoAntiHatchListEnabled = Value
+    end,
+})
 local skipHatchRareAboveKG = "0"
 PetEggs:CreateDropdown({
     Name = "Skip hatch Rare Above KG:",
@@ -1058,7 +1106,7 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
 
             --recheck setup
             if not koiLoady or koiLoady == "None"
-            -- or not brontoLoady or brontoLoady == "None"
+            or not brontoLoady or brontoLoady == "none"
             or not sealsLoady or sealsLoady == "None"
             or not incubatingLoady or incubatingLoady == "None" then
                 beastHubNotify("Missing setup!", "Please recheck loadouts for koi, bronto, seals and turn on EGG ESP Support", 15)
@@ -1298,7 +1346,7 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                     --print("Now switching back to main loadout...")
                                     task.wait(2)
                                     myFunctions.switchToLoadout(incubatingLoady)
-                                end)
+                                end, delayToSell)
                             end)
                             if success then
                                 beastHubNotify("Auto Sell Done", "Successful", 2)
