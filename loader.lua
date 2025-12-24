@@ -1,10 +1,16 @@
---==========================================================
--- Whitelist verification removed for easier distribution
+-- security checks (cleaned)
+local username = game.Players.LocalPlayer.Name
 
+-- Removed:
+-- expectedURL
+-- expectedHash
+-- whitelistMonitoringURL
+-- sha256 check
+-- sendDiscordWebhook()
+-- showWhitelistErrorMessage()
+-- whitelist loading & verify()
 
-
-
---==========================================================
+-- =============================================================
 -- Load Rayfield **once**
 if not getgenv().BeastHubRayfield then
     getgenv().BeastHubRayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -26,10 +32,10 @@ if getgenv().BeastHubLoaded then
     end    
     return
 end
-getgenv().BeastHubLoaded = true
 
--- Store your script link for reloading
+getgenv().BeastHubLoaded = true
 getgenv().BeastHubLink = "https://pastebin.com/raw/GjsWnygW"
+
 
 -- Load my reusable functions
 if not getgenv().BeastHubFunctions then
@@ -580,32 +586,6 @@ local Input_numberOfEggsToPlace = PetEggs:CreateInput({
     end,
 })
 
---delay to place eggs
-local delayToPlaceEggs = 0.5
-local Input_delayToPlaceEggs = PetEggs:CreateInput({
-    Name = "Delay to place eggs (default 0.5)",
-    CurrentValue = "0.5",
-    PlaceholderText = "seconds",
-    RemoveTextAfterFocusLost = false,
-    Flag = "delayToPlaceEggs",
-    Callback = function(Text)
-        delayToPlaceEggs = tonumber(Text) or 0.5
-    end,
-})
-
---delay to hatch eggs
-local delayToHatchEggs = 0.05
-local Input_delayToHatchEggs = PetEggs:CreateInput({
-    Name = "Delay to hatch eggs (default 0.05)",
-    CurrentValue = "0.05",
-    PlaceholderText = "seconds",
-    RemoveTextAfterFocusLost = false,
-    Flag = "delayToHatchEggs",
-    Callback = function(Text)
-        delayToHatchEggs = tonumber(Text) or 0.05
-    end,
-})
-
 
 -- Listen for Notification event once for too close eggs
 local tooCloseFlag = false
@@ -739,7 +719,7 @@ local Toggle_autoPlaceEggs = PetEggs:CreateToggle({
                             local args = { "CreateEgg", location }
                             game:GetService("ReplicatedStorage").GameEvents.PetEggService:FireServer(unpack(args))
                             --add algo here to trap 'too close to another egg and dont increment'
-                            task.wait(delayToPlaceEggs)
+                            task.wait(0.5)
                             if tooCloseFlag then
                                 tooCloseFlag = false -- reset flag for next iteration
                                 -- skip increment
@@ -998,9 +978,8 @@ PetEggs:CreateParagraph({
     Content = "1.) Setup your Auto place Eggs above and turn on toggle for auto place eggs.\n2.) Setup your selected pets for Auto Sell above.\n3.) Selected designated loadouts below.\n4.) Turn on Speedhub Egg ESP, then turn on Egg ESP support below"
 })
 local koiLoady
-local brontoLoady
+-- local brontoLoady
 local incubatingLoady
-local autoBrontoAntiHatchListEnabled = false
 local webhookRares
 local webhookHuge
 local webhookURL
@@ -1028,36 +1007,83 @@ PetEggs:CreateDropdown({
         koiLoady = tonumber(Options[1])
     end,
 })
+-- PetEggs:CreateDropdown({
+--     Name = "Bronto Loadout",
+--     Options = {"None", "1", "2", "3"},
+--     CurrentOption = {},
+--     MultipleOptions = false,
+--     Flag = "brontoLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+--     Callback = function(Options)
+--         --if not Options or not Options[1] then return end
+--         brontoLoady = tonumber(Options[1])
+--     end,
+-- })
+local skipHatchAboveKG = 0
 PetEggs:CreateDropdown({
-    Name = "Select Bronto Loadout",
-    Options = {"none", "1", "2", "3", "4", "5", "6"},
-    CurrentOption = {"none"},
-    MultipleOptions = false,
-    Flag = "brontoLoadoutNum",
-    Callback = function(Options)
-        brontoLoady = Options[1]
-    end,
-})
-PetEggs:CreateToggle({
-    Name = "Auto Bronto Anti Hatch List?",
-    CurrentValue = false,
-    Flag = "autoBrontoAntiHatchList",
-    Callback = function(Value)
-        autoBrontoAntiHatchListEnabled = Value
-    end,
-})
-local skipHatchRareAboveKG = "0"
-PetEggs:CreateDropdown({
-    Name = "Skip hatch Rare Above KG:",
-    Options = {"0", "1", "1.5", "1.6", "1.7", "1.8", "1.9", "2", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8", "2.9", "3", "3.1", "3.2", "3.3", "3.4", "3.5", "3.6", "3.7", "3.8", "3.9", "4"},
+    Name = "Skip hatch Above KG (any egg):",
+    Options = {"0", "2", "2.5", "2.6", "2.7", "2.8", "2.9", "3", "3.5", "4", "5"},
     CurrentOption = {"0"},
     MultipleOptions = false,
-    Flag = "skipHatchRareAboveKG", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+    Flag = "skipHatchAboveKG",
     Callback = function(Options)
-        --if not Options or not Options[1] then return end
-        skipHatchRareAboveKG = tonumber(Options[1])
+        skipHatchAboveKG = tonumber(Options[1]) or 0
     end,
 })
+
+-- Anti Hatch Pets UI
+local antiHatchPetsList = {}
+local allPetNamesForAntiHatch = myFunctions.getPetList() or {}
+table.sort(allPetNamesForAntiHatch)
+
+local function getAntiHatchDisplayText()
+    if #antiHatchPetsList == 0 then
+        return "No pets selected."
+    else
+        return table.concat(antiHatchPetsList, ", ")
+    end
+end
+
+local antiHatchParagraph = PetEggs:CreateParagraph({
+    Title = "Anti Hatch Pets (HUGE by default are skipped):",
+    Content = getAntiHatchDisplayText()
+})
+
+local Dropdown_antiHatchPets = PetEggs:CreateDropdown({
+    Name = "Anti Hatch Pets:",
+    Options = allPetNamesForAntiHatch,
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "antiHatchPets",
+    Callback = function(Options)
+        antiHatchPetsList = Options or {}
+        antiHatchParagraph:Set({
+            Title = "Anti Hatch Pets (HUGE by default are skipped):",
+            Content = getAntiHatchDisplayText()
+        })
+    end,
+})
+
+PetEggs:CreateButton({
+    Name = "Clear Anti Hatch",
+    Callback = function()
+        antiHatchPetsList = {}
+        Dropdown_antiHatchPets:Set({})
+        antiHatchParagraph:Set({
+            Title = "Anti Hatch Pets (HUGE by default are skipped):",
+            Content = "No pets selected."
+        })
+        beastHubNotify("Anti Hatch Cleared", "All pets removed from anti-hatch list", 3)
+    end,
+})
+
+local function isInAntiHatchList(petName)
+    for _, name in ipairs(antiHatchPetsList) do
+        if name == petName then
+            return true
+        end
+    end
+    return false
+end
 
 task.wait(.5) --to wait for loadout variables to load
 --Only two variables needed
@@ -1092,7 +1118,7 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
 
             --recheck setup
             if not koiLoady or koiLoady == "None"
-            or not brontoLoady or brontoLoady == "none"
+            -- or not brontoLoady or brontoLoady == "None"
             or not sealsLoady or sealsLoady == "None"
             or not incubatingLoady or incubatingLoady == "None" then
                 beastHubNotify("Missing setup!", "Please recheck loadouts for koi, bronto, seals and turn on EGG ESP Support", 15)
@@ -1134,7 +1160,7 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
 
                     for _, egg in pairs(myPetEggs) do
                         if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
-                            readyCounter += 1
+                            readyCounter = readyCounter + 1
                         end
                     end
 
@@ -1243,21 +1269,13 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                                 warn("Error in getting target Huge string")
                                                             end
 
-                                                            
+                                                        elseif skipHatchAboveKG > 0 and currentNumberKG >= skipHatchAboveKG then
+                                                            beastHubNotify("Skipping egg above "..tostring(skipHatchAboveKG).."KG!", petName.." = "..stringKG.."KG", 3)
 
-                                                        elseif (isRare and currentNumberKG < skipHatchRareAboveKG) or (not isRare) then --also add the skip rare threshold here 
-                                                            if isRare and currentNumberKG < skipHatchRareAboveKG then
-                                                                beastHubNotify("Hatching rare below threshold..", "", 3)
-                                                            end
+                                                        elseif isInAntiHatchList(petName) then
+                                                            beastHubNotify("Skipping Anti-Hatch Pet!", petName.." = "..stringKG.."KG", 3)
 
-                                                            -- if not isRare then
-                                                            --     print("Hatching not rare nor huge..")
-                                                            -- end
-
-                                                            --checking
-                                                            -- print("hatching: ")
-                                                            -- print(petName)
-                                                            -- print(tostring(currentNumberKG))
+                                                        else
 
                                                             local args = {
                                                                     [1] = "HatchPet";
@@ -3759,9 +3777,14 @@ local Toggle_bhubESP = PetEggs:CreateToggle({
                     end
 
                     -- ✅ If every egg already has ESP, skip heavy processing
-                    if not allHaveESP then
+                    if allHaveESP then
+                        -- print("stopped ESP checking, all have ESP already")
+                        task.wait(2)
+                    else
                         -- print("waiting or ESP folder for some eggs")
-                        if #petEggs == 0 then
+                    end
+                    
+                    if #petEggs == 0 then
                         --print("[BeastHub] No PetEggs found in your farm!")
                         return
                     else
@@ -3819,7 +3842,7 @@ local Toggle_bhubESP = PetEggs:CreateToggle({
                         -- beastHubNotify("selectedSlot", selectedSlot, 3)
                     end
 
-                    -- Loop through all to get data 
+                    -- Loop through all to get data
                     for _, egg in ipairs(petEggs) do
                     if egg:IsA("Model") then
                         local uuid = egg:GetAttribute("OBJECT_UUID")
@@ -3839,12 +3862,12 @@ local Toggle_bhubESP = PetEggs:CreateToggle({
                         --skip non ready egg
                         if petKG ~= nil then
                             if tonumber(petKG) >= hugeThreshold then
-                                isHuge = true
-                            end
+                            isHuge = true
+                        end
 
-                            -- ✅ Clear previous ESP if exists
-                            local old = egg:FindFirstChild("BhubESP")
-                            if old then old:Destroy() end
+                        -- ✅ Clear previous ESP if exists
+                        local old = egg:FindFirstChild("BhubESP")
+                        if old then old:Destroy() end
                             -- ✅ Create new ESP folder
                             local espFolder = Instance.new("Folder")
                             espFolder.Name = "BhubESP"
@@ -3866,6 +3889,7 @@ local Toggle_bhubESP = PetEggs:CreateToggle({
                             label.Size = UDim2.new(1, 0, 1, 0)
                             if isHuge then
                                 label.Text = '<font color="rgb(255,0,0)"><b>PALDO!</b></font>\n<font color="rgb(0,255,0)">' .. petName .. '</font> = ' .. petKG .. 'kg'
+
                             else
                                 label.Text = '<font color="rgb(0,255,0)">' .. petName .. '</font> = ' .. petKG .. 'kg'
                             end
