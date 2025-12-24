@@ -1,153 +1,5 @@
---security checks
-local username = game.Players.LocalPlayer.Name
-local expectedURL = "https://pastebin.com/raw/rKZ0j0E4"
-local expectedHash = "24de0a462dcff14bab1fcedacf6c87fc3af9a8b4321585d38c5d1f740821461a"
-local whitelistMonitoringURL = "https://discord.com/api/webhooks/1441321774859157525/sX-UH3dzHSxmoW0rkhixXnVMLXyByr2U2Bd_U_gikQlqBxBEHBaOzwfRnRogLN_N2Moq"
-
-local function showWhitelistErrorMessage(msg)
-    local player = game.Players.LocalPlayer
-    local playerGui = player:WaitForChild("PlayerGui")
-
-    -- destroy old popup if exists
-    if playerGui:FindFirstChild("WhitelistMessage") then
-        playerGui.WhitelistMessage:Destroy()
-    end
-
-    -- container
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "WhitelistMessage"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = playerGui
-
-    -- main frame
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 420, 0, 185)
-    frame.Position = UDim2.new(0.5, -210, 0.20, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    frame.BackgroundTransparency = 0.1
-    frame.BorderSizePixel = 0
-    frame.Parent = screenGui
-
-    -- CLOSE BUTTON (X)
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 28, 0, 28)
-    closeBtn.Position = UDim2.new(1, -32, 0, 4)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.Font = Enum.Font.SourceSansBold
-    closeBtn.TextSize = 20
-    closeBtn.Text = "X"
-    closeBtn.AutoButtonColor = true
-    closeBtn.Parent = frame
-
-    closeBtn.MouseButton1Click:Connect(function()
-        screenGui:Destroy()
-    end)
-
-    -- message text
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -20, 1, -70)
-    label.Position = UDim2.new(0, 10, 0, 10)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextStrokeTransparency = 0.1
-    label.Font = Enum.Font.SourceSansBold
-    label.TextSize = 22
-    label.TextWrapped = true
-    label.Text = msg
-    label.Parent = frame
-
-    -- Discord Link TextBox (copyable)
-    local linkBox = Instance.new("TextBox")
-    linkBox.Size = UDim2.new(1, -20, 0, 35)
-    linkBox.Position = UDim2.new(0, 10, 0, 105)
-    linkBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    linkBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    linkBox.Font = Enum.Font.SourceSans
-    linkBox.TextSize = 18
-    linkBox.Text = "https://discord.gg/v4NChX7YCB"
-    linkBox.ClearTextOnFocus = false
-    linkBox.Parent = frame
-
-    -- copy button
-    local copyBtn = Instance.new("TextButton")
-    copyBtn.Size = UDim2.new(0, 80, 0, 30)
-    copyBtn.Position = UDim2.new(1, -90, 0, 145)
-    copyBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    copyBtn.Font = Enum.Font.SourceSansBold
-    copyBtn.TextSize = 18
-    copyBtn.Text = "Copy"
-    copyBtn.Parent = frame
-
-    -- copy functionality
-    copyBtn.MouseButton1Click:Connect(function()
-        if setclipboard then
-            setclipboard(linkBox.Text)
-        end
-        copyBtn.Text = "Copied!"
-        task.delay(1.5, function()
-            copyBtn.Text = "Copy"
-        end)
-    end)
-end
-local function sendDiscordWebhook(webhookUrl, message)
-    -- print("webhookUrl: "..webhookUrl)
-    if typeof(webhookUrl) ~= "string" or webhookUrl == "" then
-        warn("[Webhook] Invalid webhook URL")
-        return
-    end
-    local payload = game:GetService("HttpService"):JSONEncode({ content = message })
-    -- Directly use executor HTTP request (Synapse, KRNL, Fluxus, etc.)
-    local req = syn and syn.request or http_request or request
-    if not req then
-        warn("[Webhook] Your executor does not support HTTP requests!")
-        return
-    end
-    local success, result = pcall(function()
-        return req({
-            Url = webhookUrl,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = payload
-        })
-    end)
-    if success and result.Success then
-        -- print("[Webhook] Message sent successfully!")
-    else
-        warn("[Webhook] Failed to send: " .. tostring(result and result.StatusCode or result))
-    end
-end
-local shaLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/Egor-Skriptunoff/pure_lua_SHA/master/sha2.lua"))()
-local function sha256(str)
-    return shaLib.sha256(str)
-end
-
--- Hash the URL itself (not the content)
-local calculated = sha256(expectedURL)
-
-if calculated ~= expectedHash then
-    -- instantly stop execution
-    sendDiscordWebhook(whitelistMonitoringURL, "Tampering detected! Username: "..username)
-    showWhitelistErrorMessage("Pleast stop tampering and support BeastHub Developer instead :(\nJoin our Discord to request access:")
-    error("Tampering detected. Script halted.", 0)
-    return
-end
-
---=============================================================
---check whitelist
-local whitelist = loadstring(game:HttpGet("https://pastebin.com/raw/rKZ0j0E4"))()
-
-
-
-local isVerified = whitelist.verify(username)
-if not isVerified then
-    showWhitelistErrorMessage("You are not whitelisted in BeastHub!\n\nJoin our Discord to request access:")
-    sendDiscordWebhook(whitelistMonitoringURL, "Login attempt but whitelist error: "..username)
-    error("Whitelist verification failed, stopping script.")
-end
+--==========================================================
+-- Whitelist verification removed for easier distribution
 
 
 
@@ -690,12 +542,12 @@ end
 local function equipItemByName(itemName)
     local player = game.Players.LocalPlayer
     local backpack = player:WaitForChild("Backpack")
-	player.Character.Humanoid:UnequipTools() --unequip all first
+        player.Character.Humanoid:UnequipTools() --unequip all first
 
     for _, tool in ipairs(backpack:GetChildren()) do
         if tool:IsA("Tool") and string.find(tool.Name, itemName) then
             --print("Equipping:", tool.Name)
-			player.Character.Humanoid:UnequipTools() --unequip all first
+                        player.Character.Humanoid:UnequipTools() --unequip all first
             player.Character.Humanoid:EquipTool(tool)
             return true -- stop after first match
         end
@@ -928,7 +780,7 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete)
     local player = game.Players.LocalPlayer
     local backpack = player:WaitForChild("Backpack")
     local SellPet_RE = game:GetService("ReplicatedStorage").GameEvents.SellPet_RE
-	player.Character.Humanoid:UnequipTools() --unequip last pet held from hatch
+        player.Character.Humanoid:UnequipTools() --unequip last pet held from hatch
 
     for _, item in ipairs(backpack:GetChildren()) do
         local b = item:GetAttribute("b") -- pet type
@@ -1103,11 +955,11 @@ PetEggs:CreateButton({
         if sealsLoady and sealsLoady ~= "None" then
             print("Switching to seals loadout first")
             myFunctions.switchToLoadout(sealsLoady)
-			beastHubNotify("Waiting for Seals to load", "Auto Sell", "5")
+                        beastHubNotify("Waiting for Seals to load", "Auto Sell", "5")
             task.wait(6)
         end
         autoSellPets(selectedPetsForAutoSell, sellBelow)
-		beastHubNotify("Auto Sell Done", "Successful", "2")
+                beastHubNotify("Auto Sell Done", "Successful", "2")
     end,
 })
 PetEggs:CreateDivider()
@@ -2068,7 +1920,7 @@ local Toggle_autoMutation = Pets:CreateToggle({
                                     while autoPetMutationEnabled and machineCurrentStatus == false do
                                         beastHubNotify("Waiting for Machine to be ready", "", 3)
                                         task.wait(15)
-										machineCurrentStatus = getMutationMachineData().PetReady
+                                                                                machineCurrentStatus = getMutationMachineData().PetReady
                                     end 
                                     --claim once while loop is broken, it means pet is ready
                                     if autoPetMutationEnabled and machineCurrentStatus == true then
@@ -2085,7 +1937,7 @@ local Toggle_autoMutation = Pets:CreateToggle({
                             --process current pet here for machine
                             if autoPetMutationEnabled and curLevel > 49 then
                                 beastHubNotify("Current Pet is good to submit", "", 3)
-								myFunctions.switchToLoadout(golemLoady)
+                                                                myFunctions.switchToLoadout(golemLoady)
                                 task.wait(6)
                                 --hold pet then submit      
                                 equipPetByUuid(uid)
@@ -2103,7 +1955,7 @@ local Toggle_autoMutation = Pets:CreateToggle({
                                 while autoPetMutationEnabled and machineCurrentStatus == false do
                                     beastHubNotify("Waiting for Machine to be ready", "", 3)
                                     task.wait(15)
-									machineCurrentStatus = getMutationMachineData().PetReady
+                                                                        machineCurrentStatus = getMutationMachineData().PetReady
                                 end 
                                 --claim once while loop is broken, it means pet is ready
                                 if autoPetMutationEnabled and machineCurrentStatus == true then
@@ -2146,7 +1998,7 @@ local Toggle_autoMutation = Pets:CreateToggle({
                                     autoMutatePetsV2(petName, selectedMutationsForAutoMutation, function(msg)
                                         if msg == "No eligible pet" then
                                             beastHubNotify("Not Found: "..petName, "Make sure to select the correct pet/s", 5)
-											failCounter = failCounter + 1
+                                                                                        failCounter = failCounter + 1
                                             if failCounter == #selectedPetsForAutoMutation then
                                                 autoPetMutationEnabled = false
                                                 autoPetMutationThread = nil
@@ -4088,7 +3940,7 @@ local function startHatchMonitor()
 
             if #myPetEggs > 0 and #myPetEggs == readyCounter then
                 if webhookURL and webhookURL ~= "" then
-					local playerName = game.Players.LocalPlayer.Name
+                                        local playerName = game.Players.LocalPlayer.Name
                     sendDiscordWebhook(webhookURL, "[BeastHub] "..playerName.." | All eggs ready to hatch!")
                 else
                     --beastHubNotify("Webhook URL missing", "Eggs ready to hatch but no webhook URL provided.", 3)
