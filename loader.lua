@@ -4024,7 +4024,7 @@ local Toggle_bhubESP = PetEggs:CreateToggle({
                             label.BackgroundTransparency = 1
                             label.Size = UDim2.new(1, 0, 1, 0)
                             if isHuge then
-                                label.Text = '<font color="rgb(255,0,0)"><b>PALDO!</b></font>\n<font color="rgb(0,255,0)">' .. petName .. '</font> = ' .. petKG .. 'kg'
+                                label.Text = '<font color="rgb(255,0,0)"><b>Paldooo! (' .. petKG .. 'kg)</b></font>\n<font color="rgb(0,255,0)">' .. petName .. '</font>'
 
                             else
                                 label.Text = '<font color="rgb(0,255,0)">' .. petName .. '</font> = ' .. petKG .. 'kg'
