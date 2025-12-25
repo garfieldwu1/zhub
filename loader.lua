@@ -952,7 +952,7 @@ local Dropdown_sealsLoadoutNum = PetEggs:CreateDropdown({
     end,
 })
 local suggestedAutoSellList = {
-    "Ostrich", "Dog", "Golden Lab", "Bunny", "Peacock", "Capybara", "Scarlet Macaw",
+    "Ostrich", "Peacock", "Capybara", "Scarlet Macaw",
     "Bat", "Bone Dog", "Spider", "Black Cat",
     "Oxpecker", "Zebra", "Giraffe", "Rhino",
     "Tree Frog", "Hummingbird", "Iguana", "Chimpanzee",
