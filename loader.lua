@@ -767,6 +767,90 @@ local eggPositionPresets = {
         Vector3.new(10, 0, -30),
         Vector3.new(6, 0, -30),
     },
+    ["Left - Stacked"] = {
+        Vector3.new(-36, 0, -18),
+        Vector3.new(-27, 0, -18),
+        Vector3.new(-18, 0, -18),
+        Vector3.new(-9, 0, -18),
+
+        Vector3.new(-36, 0, -33),
+        Vector3.new(-27, 0, -33),
+        Vector3.new(-18, 0, -33),
+        Vector3.new(-9, 0, -33),
+
+        Vector3.new(-36, 0, -48),
+        Vector3.new(-27, 0, -48),
+        Vector3.new(-18, 0, -48),
+        Vector3.new(-9, 0, -48),
+
+        Vector3.new(-36, 0, -63),
+        Vector3.new(-27, 0, -63),
+        Vector3.new(-18, 0, -63),
+        Vector3.new(-9, 0, -63),
+    },
+    ["Right - Stacked"] = {
+        Vector3.new(36, 0, -18),
+        Vector3.new(27, 0, -18),
+        Vector3.new(18, 0, -18),
+        Vector3.new(9, 0, -18),
+
+        Vector3.new(36, 0, -33),
+        Vector3.new(27, 0, -33),
+        Vector3.new(18, 0, -33),
+        Vector3.new(9, 0, -33),
+
+        Vector3.new(36, 0, -48),
+        Vector3.new(27, 0, -48),
+        Vector3.new(18, 0, -48),
+        Vector3.new(9, 0, -48),
+
+        Vector3.new(36, 0, -63),
+        Vector3.new(27, 0, -63),
+        Vector3.new(18, 0, -63),
+        Vector3.new(9, 0, -63),
+    },
+    ["Left - Compressed"] = {
+        Vector3.new(-18, 0, -12),
+        Vector3.new(-14, 0, -12),
+        Vector3.new(-10, 0, -12),
+        Vector3.new(-6, 0, -12),
+
+        Vector3.new(-18, 0, -18),
+        Vector3.new(-14, 0, -18),
+        Vector3.new(-10, 0, -18),
+        Vector3.new(-6, 0, -18),
+
+        Vector3.new(-18, 0, -24),
+        Vector3.new(-14, 0, -24),
+        Vector3.new(-10, 0, -24),
+        Vector3.new(-6, 0, -24),
+
+        Vector3.new(-18, 0, -30),
+        Vector3.new(-14, 0, -30),
+        Vector3.new(-10, 0, -30),
+        Vector3.new(-6, 0, -30),
+    },
+    ["Right - Compressed"] = {
+        Vector3.new(18, 0, -12),
+        Vector3.new(14, 0, -12),
+        Vector3.new(10, 0, -12),
+        Vector3.new(6, 0, -12),
+
+        Vector3.new(18, 0, -18),
+        Vector3.new(14, 0, -18),
+        Vector3.new(10, 0, -18),
+        Vector3.new(6, 0, -18),
+
+        Vector3.new(18, 0, -24),
+        Vector3.new(14, 0, -24),
+        Vector3.new(10, 0, -24),
+        Vector3.new(6, 0, -24),
+
+        Vector3.new(18, 0, -30),
+        Vector3.new(14, 0, -30),
+        Vector3.new(10, 0, -30),
+        Vector3.new(6, 0, -30),
+    },
 }
 
 -- convert to world positions
@@ -894,6 +978,7 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete)
     local SellPet_RE = game:GetService("ReplicatedStorage").GameEvents.SellPet_RE
         player.Character.Humanoid:UnequipTools() --unequip last pet held from hatch
 
+    local petsToSell = {}
     for _, item in ipairs(backpack:GetChildren()) do
         local b = item:GetAttribute("b") -- pet type
         local d = item:GetAttribute("d") -- favorite
@@ -914,13 +999,16 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete)
             end
 
             if isTarget and weight and weight < weightTargetBelow then
-                player.Character.Humanoid:UnequipTools()
-                player.Character.Humanoid:EquipTool(item)
-                task.wait(0.2) -- ensure pet equips before selling
-                SellPet_RE:FireServer(item.Name)
-                print("Sold:", item.Name)
-                task.wait(delayToSell)
+                table.insert(petsToSell, item)
             end
+        end
+    end
+
+    for _, item in ipairs(petsToSell) do
+        SellPet_RE:FireServer(item.Name)
+        print("Sold:", item.Name)
+        if delayToSell and delayToSell > 0 then
+            task.wait(delayToSell)
         end
     end
 
@@ -3838,7 +3926,7 @@ Pets:CreateDivider()
 local automationModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/Adobo1/Testing/refs/heads/main/Zhub_Automation2.lua"))()
 automationModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, nil, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
 
-    
+
 --Other Egg settings
 PetEggs:CreateSection("Egg settings")
 -- Egg ESP support --
