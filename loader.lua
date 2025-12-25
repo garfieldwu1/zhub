@@ -900,7 +900,6 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete)
 
         if b == "l" and d == false then
             local petName = item.Name:match("^(.-)%s*%[") or item.Name
-            petName = petName:gsub("%s*%(.-%)%s*", "") -- Remove (Shiny), (Rainbow) etc.
             petName = petName:match("^%s*(.-)%s*$") -- trim spaces
 
             local weightStr = item.Name:match("%[(%d+%.?%d*)%s*[Kk][Gg]%]")
@@ -920,9 +919,7 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete)
                 task.wait(0.2) -- ensure pet equips before selling
                 SellPet_RE:FireServer(item.Name)
                 print("Sold:", item.Name)
-                if delayToSell and delayToSell > 0 then
-                    task.wait(delayToSell)
-                end
+                task.wait(delayToSell)
             end
         end
     end
@@ -3841,7 +3838,7 @@ Pets:CreateDivider()
 local automationModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/Adobo1/Testing/refs/heads/main/Zhub_Automation2.lua"))()
 automationModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, nil, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
 
-
+    
 --Other Egg settings
 PetEggs:CreateSection("Egg settings")
 -- Egg ESP support --
