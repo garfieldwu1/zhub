@@ -79,6 +79,251 @@ local Shops = Window:CreateTab("Shops", "circle-dollar-sign")
 local Pets = Window:CreateTab("Pets", "cat")
 local PetEggs = Window:CreateTab("Eggs", "egg")
 local Misc = Window:CreateTab("Misc", "code")
+
+--Cancel Animation
+Misc:CreateSection("Cancel READY Animation (Quick Cast)")
+local parag_cancelAnim = Misc:CreateParagraph({
+    Title = "Pickup/Place:",
+    Content = "None"
+})
+local dropdown_selectPetsForCancelAnim = Misc:CreateDropdown({
+    Name = "Select Pet/s",
+    Options = {},
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "selectPetsForCancelAnim", 
+    Callback = function(Options)
+        local listText = table.concat(Options, ", ")
+        if listText == "" then
+            listText = "None"
+        end
+
+        parag_cancelAnim:Set({
+            Title = "Pickup/Place:",
+            Content = listText
+        })
+    end,
+
+})
+Misc:CreateButton({
+    Name = "Refresh list",
+    Callback = function()
+        local function getPlayerData()
+            local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
+            local logs = dataService:GetData()
+            return logs
+        end
+
+        local function equippedPets()
+            local playerData = getPlayerData()
+            if not playerData.PetsData then
+                warn("PetsData missing")
+                return nil
+            end
+
+            local tempStorage = playerData.PetsData.EquippedPets
+            if not tempStorage or type(tempStorage) ~= "table" then
+                warn("EquippedPets missing or invalid")
+                return nil
+            end
+
+            local petIdsList = {}
+            for _, id in ipairs(tempStorage) do
+                table.insert(petIdsList, id)
+            end
+
+            return petIdsList
+        end
+
+        local function getPetNameUsingId(uid)
+            local playerData = getPlayerData()
+            if playerData.PetsData.PetInventory.Data then
+                local data = playerData.PetsData.PetInventory.Data
+                for id,petData in pairs(data) do
+                    if id == uid then
+                        return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
+                    end
+                end
+            end
+        end
+
+        local equipped = equippedPets()
+        local namesToId = {}
+        for _,id in ipairs(equipped) do
+            local petName = getPetNameUsingId(id)
+            table.insert(namesToId, petName.." | "..id)
+        end
+
+        if equipped and #equipped > 0 then
+            dropdown_selectPetsForCancelAnim:Refresh(namesToId)
+        else
+            beastHubNotify("equipped pets error", "", 3)
+        end
+    end,
+})
+Misc:CreateButton({
+    Name = "Clear Selected",
+    Callback = function()
+        dropdown_selectPetsForCancelAnim:Set({})
+        parag_cancelAnim:Set({
+            Title = "Pickup/Place:",
+            Content = "None"
+        })
+    end,
+})
+local animation_cancelDelay = Misc:CreateInput({
+    Name = "Animation Cancel delay",
+    CurrentValue = "",
+    PlaceholderText = "seconds",
+    RemoveTextAfterFocusLost = false,
+    Flag = "animationCancelDelay",
+    Callback = function(Text)
+    -- The function that takes place when the input is changed
+    -- The variable (Text) is a string for the value in the text box
+    end,
+})
+
+local cancelAnimationEnabled
+local cancelAnimationThread = nil
+local cooldownListenerCancelAnim = nil
+local petCooldownsCancelAnim = {}
+Misc:CreateToggle({
+    Name = "Cancel Animation",
+    CurrentValue = false,
+    Flag = "cancelAnimation",
+    Callback = function(Value)
+        cancelAnimationEnabled = Value
+
+        if cancelAnimationEnabled then
+            if cancelAnimationThread then return end
+            -- Hook PetCooldownsUpdated
+            cooldownListenerCancelAnim = game:GetService("ReplicatedStorage").GameEvents.PetCooldownsUpdated.OnClientEvent:Connect(function(petId, data)
+                if typeof(data) == "table" and data[1] and data[1].Time then
+                    petCooldownsCancelAnim[petId] = data[1].Time
+                else
+                    petCooldownsCancelAnim[petId] = 0
+                end
+            end)
+
+            -- Validate setup
+            local pickupList, animDelay, t = {}, tonumber(animation_cancelDelay.CurrentValue), 0
+            while t < 3 do
+                pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
+                animDelay = tonumber(animation_cancelDelay.CurrentValue)
+                if #pickupList > 0 then
+                    if not animDelay then
+                        beastHubNotify("Invalid delay/cd input", "", 3)
+                        return
+                    end
+                    break
+                end
+                task.wait(0.5)
+                t = t + 0.5
+            end
+            if #pickupList == 0 then
+                beastHubNotify("Missing setup, please select pets", "", 3)
+                return
+            end
+
+            -- Equip function
+            local function equipPetByUuid(uuid)
+                local player = game.Players.LocalPlayer
+                local backpack = player:WaitForChild("Backpack")
+                for _, tool in ipairs(backpack:GetChildren()) do
+                    if tool:GetAttribute("PET_UUID") == uuid then
+                        player.Character.Humanoid:EquipTool(tool)
+                    end
+                end
+            end
+
+            local function isEquipped(uuid)
+                local function getPlayerData()
+                    local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
+                    local logs = dataService:GetData()
+                    return logs
+                end
+
+                local function equippedPets()
+                    local playerData = getPlayerData()
+                    if not playerData.PetsData then
+                        warn("PetsData missing")
+                        return nil
+                    end
+
+                    local tempStorage = playerData.PetsData.EquippedPets
+                    if not tempStorage or type(tempStorage) ~= "table" then
+                        warn("EquippedPets missing or invalid")
+                        return nil
+                    end
+
+                    local petIdsList = {}
+                    for _, id in ipairs(tempStorage) do
+                        table.insert(petIdsList, id)
+                    end
+
+                    return petIdsList
+                end
+
+                local equippedPets = equippedPets()
+                if equippedPets then
+                    for _,id in ipairs(equippedPets) do
+                        if id == uuid then
+                            return true
+                        end
+                    end
+                end
+
+                return false
+            end
+
+            beastHubNotify("Cancel animation running", "", 3)
+            local location = CFrame.new(getFarmSpawnCFrame():PointToWorldSpace(Vector3.new(8,0,-50)))
+
+            -- Main auto pickup thread
+            local activeCancelTasks = {}
+            cancelAnimationThread = task.spawn(function()
+                while cancelAnimationEnabled do
+                    if M.isSafeToPickPlace then
+                        pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
+                        for _, pickupEntry in ipairs(pickupList) do
+                            if not cancelAnimationEnabled then break end
+                            local petId = (pickupEntry:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
+                            if not activeCancelTasks[petId] then
+                                local timeLeft = petCooldownsCancelAnim[petId] or 0
+                                if timeLeft == 0 and isEquipped(petId) then
+                                    activeCancelTasks[petId] = true
+                                    task.spawn(function()
+                                        task.wait(animDelay)
+                                        if cancelAnimationEnabled and M.isSafeToPickPlace then
+                                            game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("UnequipPet", petId)
+                                            task.wait()
+                                            equipPetByUuid(petId)
+                                            task.wait()
+                                            game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("EquipPet", petId, location)
+                                        end
+                                        activeCancelTasks[petId] = nil
+                                    end)
+                                end
+                            end
+                        end
+                    end
+                    task.wait(0.05)
+                end
+                cancelAnimationThread = nil
+            end)
+
+        else
+            -- Disable
+            if cooldownListenerCancelAnim then
+                cooldownListenerCancelAnim:Disconnect()
+                cooldownListenerCancelAnim = nil
+            end
+            cancelAnimationEnabled = false
+            cancelAnimationThread = nil
+        end
+    end
+})
+Misc:CreateDivider()
 -- ===Declarations
 local workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
@@ -3896,7 +4141,7 @@ Pets:CreateDivider()
 local automationModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/Adobo1/Testing/refs/heads/main/Zhub_Automation2.lua"))()
 automationModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, nil, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
 
-    
+
 --Other Egg settings
 PetEggs:CreateSection("Egg settings")
 -- Egg ESP support --
@@ -4118,9 +4363,9 @@ local Toggle_disableEggCollision = PetEggs:CreateToggle({
 PetEggs:CreateDivider()
 
 --== Misc>Performance
-Misc:CreateSection("Advance Event")
+Misc:CreateSection("Cancel READY Animation (Quick Cast)")
 Misc:CreateButton({
-    Name = "Advance Event",
+    Name = "Cancel READY Animation (Quick Cast)",
     Callback = function()
         local smithingEvent = game:GetService("ReplicatedStorage").Modules.UpdateService:FindFirstChild("SmithingEvent")
         if smithingEvent then
