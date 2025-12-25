@@ -889,12 +889,29 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete)
     --     print("Selling complete, now do next step!")
     -- end)
 
+    if not targetPets or #targetPets == 0 then
+        warn("[BeastHub] No pets to sell!")
+        return false
+    end
+
+    if not weightTargetBelow or weightTargetBelow <= 0 then
+        warn("[BeastHub] Invalid weight threshold!")
+        return false
+    end
+
     local player = game.Players.LocalPlayer
     local backpack = player:WaitForChild("Backpack")
     local SellPet_RE = game:GetService("ReplicatedStorage").GameEvents.SellPet_RE
-        player.Character.Humanoid:UnequipTools() --unequip last pet held from hatch
+    local soldCount = 0
+
+    -- Unequip first
+    if player.Character and player.Character:FindFirstChild("Humanoid") then
+        player.Character.Humanoid:UnequipTools()
+    end
 
     for _, item in ipairs(backpack:GetChildren()) do
+        if not item:IsA("Tool") then continue end
+
         local b = item:GetAttribute("b") -- pet type
         local d = item:GetAttribute("d") -- favorite
 
@@ -905,6 +922,7 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete)
             local weightStr = item.Name:match("%[(%d+%.?%d*)%s*[Kk][Gg]%]")
             local weight = weightStr and tonumber(weightStr)
 
+            -- Check if this is a target pet
             local isTarget = false
             for _, name in ipairs(targetPets) do
                 if petName == name then
@@ -913,21 +931,36 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete)
                 end
             end
 
+            -- Sell if matches criteria
             if isTarget and weight and weight < weightTargetBelow then
-                player.Character.Humanoid:UnequipTools()
-                player.Character.Humanoid:EquipTool(item)
-                task.wait(0.2) -- ensure pet equips before selling
-                SellPet_RE:FireServer(item.Name)
-                print("Sold:", item.Name)
-                task.wait(delayToSell)
+                if player.Character and player.Character:FindFirstChild("Humanoid") then
+                    player.Character.Humanoid:UnequipTools()
+                    task.wait(0.1)
+                    player.Character.Humanoid:EquipTool(item)
+                    task.wait(0.2) -- ensure pet equips before selling
+
+                    local success = pcall(function()
+                        SellPet_RE:FireServer(item.Name)
+                    end)
+
+                    if success then
+                        print("[BeastHub] Sold: " .. item.Name)
+                        soldCount = soldCount + 1
+                    end
+                    task.wait(delayToSellPets)
+                end
             end
         end
     end
+
+    print("[BeastHub] Auto Sell complete - Sold " .. soldCount .. " pets")
 
     -- Call the callback AFTER finishing all pets
     if typeof(onComplete) == "function" then
         onComplete()
     end
+
+    return true
 end
 
 
@@ -950,7 +983,7 @@ local Dropdown_sealsLoadoutNum = PetEggs:CreateDropdown({
     end,
 })
 local suggestedAutoSellList = {
-    "Ostrich", "Dog", "Golden Lab", "Bunny", "Peacock", "Capybara", "Scarlet Macaw",
+    "Ostrich", "Peacock", "Capybara", "Scarlet Macaw",
     "Bat", "Bone Dog", "Spider", "Black Cat",
     "Oxpecker", "Zebra", "Giraffe", "Rhino",
     "Tree Frog", "Hummingbird", "Iguana", "Chimpanzee",
@@ -1060,35 +1093,60 @@ local Dropdown_sellBelowKG = PetEggs:CreateDropdown({
     end,
 })
 
---delay to sell
-local delayToSell = 0.05
-local Input_delayToSell = PetEggs:CreateInput({
-    Name = "Delay to sell (default 0.05)",
+--delay to sell pets (input field to adjust delay speed)
+local Input_delayToSellPets = PetEggs:CreateInput({
+    Name = "Delay to sell (Default 0.05)",
     CurrentValue = "0.05",
-    PlaceholderText = "seconds",
+    PlaceholderText = "Delay in seconds (lower = faster)",
     RemoveTextAfterFocusLost = false,
-    Flag = "delayToSell",
+    Flag = "delayToSellPets",
     Callback = function(Text)
-        delayToSell = tonumber(Text) or 0.05
+        local newDelay = tonumber(Text)
+        if newDelay and newDelay > 0 then
+            delayToSellPets = newDelay
+            beastHubNotify("Sell Speed Updated", "Delay: " .. tostring(delayToSellPets) .. "s", 2)
+        else
+            beastHubNotify("Invalid Input", "Use a positive number", 3)
+            delayToSellPets = 0.05
+        end
     end,
 })
 
 PetEggs:CreateButton({
     Name = "Click to SELL",
     Callback = function()
-        --print(tostring(sellBelow))
+        -- Validate settings
+        if not selectedPetsForAutoSell or #selectedPetsForAutoSell == 0 then
+            beastHubNotify("Auto Sell Error", "No pets selected!", 3)
+            return
+        end
+        if not sellBelow then
+            beastHubNotify("Auto Sell Error", "Please set KG threshold", 3)
+            return
+        end
+
+        -- Switch to seals loadout if configured
         if sealsLoady and sealsLoady ~= "None" then
             print("Switching to seals loadout first")
             myFunctions.switchToLoadout(sealsLoady)
-                        beastHubNotify("Waiting for Seals to load", "Auto Sell", "5")
+            beastHubNotify("Waiting for Seals to load", "Auto Sell", 5)
             task.wait(6)
         end
-        autoSellPets(selectedPetsForAutoSell, sellBelow)
-                beastHubNotify("Auto Sell Done", "Successful", "2")
+
+        -- Execute auto sell
+        local success, err = pcall(function()
+            autoSellPets(selectedPetsForAutoSell, sellBelow)
+        end)
+
+        if success then
+            beastHubNotify("Auto Sell Done", "Successful", 2)
+        else
+            beastHubNotify("Auto Sell Error", tostring(err), 4)
+            warn("Auto Sell failed: " .. tostring(err))
+        end
     end,
 })
 PetEggs:CreateDivider()
-
 --Pet/Eggs>SMART HATCHING
 PetEggs:CreateSection("SMART Auto Hatching")
 -- local Paragraph = Pets:CreateParagraph({Title = "INSTRUCTIONS:", Content = "1.) Setup your Auto place Eggs above and turn on toggle for auto place eggs. 2.) Setup your selected pets for Auto Sell above. 3.) Selected desginated loadouts below. 4.) Turn on toggle for Full Auto Hatching"})
