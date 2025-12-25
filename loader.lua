@@ -731,20 +731,20 @@ local eggPositionPresets = {
         Vector3.new(-10, 0, -12),
         Vector3.new(-6, 0, -12),
 
-        Vector3.new(-18, 0, -18),
-        Vector3.new(-14, 0, -18),
-        Vector3.new(-10, 0, -18),
-        Vector3.new(-6, 0, -18),
+        Vector3.new(-18, 0, -16),
+        Vector3.new(-14, 0, -16),
+        Vector3.new(-10, 0, -16),
+        Vector3.new(-6, 0, -16),
+
+        Vector3.new(-18, 0, -20),
+        Vector3.new(-14, 0, -20),
+        Vector3.new(-10, 0, -20),
+        Vector3.new(-6, 0, -20),
 
         Vector3.new(-18, 0, -24),
         Vector3.new(-14, 0, -24),
         Vector3.new(-10, 0, -24),
         Vector3.new(-6, 0, -24),
-
-        Vector3.new(-18, 0, -30),
-        Vector3.new(-14, 0, -30),
-        Vector3.new(-10, 0, -30),
-        Vector3.new(-6, 0, -30),
     },
     ["Right - compressed"] = {
         Vector3.new(18, 0, -12),
