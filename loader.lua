@@ -900,6 +900,7 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete)
 
         if b == "l" and d == false then
             local petName = item.Name:match("^(.-)%s*%[") or item.Name
+            petName = petName:gsub("%s*%(.-%)%s*", "") -- Remove (Shiny), (Rainbow) etc.
             petName = petName:match("^%s*(.-)%s*$") -- trim spaces
 
             local weightStr = item.Name:match("%[(%d+%.?%d*)%s*[Kk][Gg]%]")
@@ -952,7 +953,7 @@ local Dropdown_sealsLoadoutNum = PetEggs:CreateDropdown({
     end,
 })
 local suggestedAutoSellList = {
-    "Ostrich", "Peacock", "Capybara", "Scarlet Macaw",
+    "Ostrich", "Dog", "Golden Lab", "Bunny", "Peacock", "Capybara", "Scarlet Macaw",
     "Bat", "Bone Dog", "Spider", "Black Cat",
     "Oxpecker", "Zebra", "Giraffe", "Rhino",
     "Tree Frog", "Hummingbird", "Iguana", "Chimpanzee",
