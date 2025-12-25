@@ -149,12 +149,16 @@ Misc:CreateButton({
 
         local equipped = equippedPets()
         local namesToId = {}
-        for _,id in ipairs(equipped) do
-            local petName = getPetNameUsingId(id)
-            table.insert(namesToId, petName.." | "..id)
+        if equipped then
+            for _,id in ipairs(equipped) do
+                local petName = getPetNameUsingId(id)
+                if petName then
+                    table.insert(namesToId, petName.." | "..id)
+                end
+            end
         end
 
-        if equipped and #equipped > 0 then
+        if #namesToId > 0 then
             dropdown_selectPetsForCancelAnim:Refresh(namesToId)
         else
             beastHubNotify("equipped pets error", "", 3)
@@ -212,8 +216,8 @@ Misc:CreateToggle({
                 animDelay = tonumber(animation_cancelDelay.CurrentValue)
                 if #pickupList > 0 then
                     if not animDelay then
-                        beastHubNotify("Invalid delay/cd input", "", 3)
-                        return
+                        -- Fallback to a default if user hasn't input yet or input is invalid
+                        animDelay = 0.1
                     end
                     break
                 end
@@ -227,32 +231,38 @@ Misc:CreateToggle({
 
             -- Equip function
             local function equipPetByUuid(uuid)
-                local player = game.Players.LocalPlayer
-                local backpack = player:WaitForChild("Backpack")
-                for _, tool in ipairs(backpack:GetChildren()) do
+                local p = game.Players.LocalPlayer
+                local bp = p:FindFirstChild("Backpack")
+                if not bp then return end
+                for _, tool in ipairs(bp:GetChildren()) do
                     if tool:GetAttribute("PET_UUID") == uuid then
-                        player.Character.Humanoid:EquipTool(tool)
+                        local char = p.Character
+                        if char and char:FindFirstChild("Humanoid") then
+                            char.Humanoid:EquipTool(tool)
+                        end
                     end
                 end
             end
 
             local function isEquipped(uuid)
                 local function getPlayerData()
-                    local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
+                    local ds = game:GetService("ReplicatedStorage"):FindFirstChild("Modules")
+                    if not ds then return nil end
+                    ds = ds:FindFirstChild("DataService")
+                    if not ds then return nil end
+                    local dataService = require(ds)
                     local logs = dataService:GetData()
                     return logs
                 end
 
                 local function equippedPets()
                     local playerData = getPlayerData()
-                    if not playerData.PetsData then
-                        warn("PetsData missing")
+                    if not playerData or not playerData.PetsData then
                         return nil
                     end
 
                     local tempStorage = playerData.PetsData.EquippedPets
                     if not tempStorage or type(tempStorage) ~= "table" then
-                        warn("EquippedPets missing or invalid")
                         return nil
                     end
 
@@ -264,9 +274,9 @@ Misc:CreateToggle({
                     return petIdsList
                 end
 
-                local equippedPets = equippedPets()
-                if equippedPets then
-                    for _,id in ipairs(equippedPets) do
+                local eqPets = equippedPets()
+                if eqPets then
+                    for _,id in ipairs(eqPets) do
                         if id == uuid then
                             return true
                         end
@@ -277,29 +287,43 @@ Misc:CreateToggle({
             end
 
             beastHubNotify("Cancel animation running", "", 3)
-            local location = CFrame.new(getFarmSpawnCFrame():PointToWorldSpace(Vector3.new(8,0,-50)))
+            local spawnCF = getFarmSpawnCFrame()
+            local location = spawnCF and CFrame.new(spawnCF:PointToWorldSpace(Vector3.new(8,0,-50))) or CFrame.new(0,0,0)
 
             -- Main auto pickup thread
             local activeCancelTasks = {}
             cancelAnimationThread = task.spawn(function()
                 while cancelAnimationEnabled do
-                    if M.isSafeToPickPlace then
+                    local M = getgenv().M
+                    -- Check if we are in Eagle loadout and NOT in Koi loadout
+                    -- Based on user message: "Eagle Loadout" and "koi"
+                    -- We'll check the current selected loadout from the UI variables
+                    local isEagle = (incubatingLoady ~= nil and myFunctions.currentLoadout == incubatingLoady)
+                    local isKoi = (koiLoady ~= nil and myFunctions.currentLoadout == koiLoady)
+
+                    if M and M.isSafeToPickPlace and isEagle and not isKoi then
                         pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
                         for _, pickupEntry in ipairs(pickupList) do
-                            if not cancelAnimationEnabled then break end
+                            if not cancelAnimationEnabled or myFunctions.currentLoadout == koiLoady then break end
                             local petId = (pickupEntry:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
-                            if not activeCancelTasks[petId] then
+                            if petId ~= "" and not activeCancelTasks[petId] then
                                 local timeLeft = petCooldownsCancelAnim[petId] or 0
                                 if timeLeft == 0 and isEquipped(petId) then
                                     activeCancelTasks[petId] = true
                                     task.spawn(function()
-                                        task.wait(animDelay)
-                                        if cancelAnimationEnabled and M.isSafeToPickPlace then
-                                            game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("UnequipPet", petId)
-                                            task.wait()
-                                            equipPetByUuid(petId)
-                                            task.wait()
-                                            game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("EquipPet", petId, location)
+                                        local d = tonumber(animation_cancelDelay.CurrentValue) or 0.1
+                                        task.wait(d)
+                                        -- Re-verify conditions before firing server
+                                        if cancelAnimationEnabled and M and M.isSafeToPickPlace and myFunctions.currentLoadout == incubatingLoady then
+                                            local ps = game:GetService("ReplicatedStorage"):FindFirstChild("GameEvents")
+                                            if ps then ps = ps:FindFirstChild("PetsService") end
+                                            if ps then
+                                                ps:FireServer("UnequipPet", petId)
+                                                task.wait()
+                                                equipPetByUuid(petId)
+                                                task.wait()
+                                                ps:FireServer("EquipPet", petId, location)
+                                            end
                                         end
                                         activeCancelTasks[petId] = nil
                                     end)
@@ -1155,44 +1179,44 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete)
     end
 
     for _, item in ipairs(backpack:GetChildren()) do
-        if not item:IsA("Tool") then continue end
+        if item:IsA("Tool") then
+            local b = item:GetAttribute("b") -- pet type
+            local d = item:GetAttribute("d") -- favorite
 
-        local b = item:GetAttribute("b") -- pet type
-        local d = item:GetAttribute("d") -- favorite
+            if b == "l" and d == false then
+                local petName = item.Name:match("^(.-)%s*%[") or item.Name
+                petName = petName:match("^%s*(.-)%s*$") -- trim spaces
 
-        if b == "l" and d == false then
-            local petName = item.Name:match("^(.-)%s*%[") or item.Name
-            petName = petName:match("^%s*(.-)%s*$") -- trim spaces
+                local weightStr = item.Name:match("%[(%d+%.?%d*)%s*[Kk][Gg]%]")
+                local weight = weightStr and tonumber(weightStr)
 
-            local weightStr = item.Name:match("%[(%d+%.?%d*)%s*[Kk][Gg]%]")
-            local weight = weightStr and tonumber(weightStr)
-
-            -- Check if this is a target pet
-            local isTarget = false
-            for _, name in ipairs(targetPets) do
-                if petName == name then
-                    isTarget = true
-                    break
-                end
-            end
-
-            -- Sell if matches criteria
-            if isTarget and weight and weight < weightTargetBelow then
-                if player.Character and player.Character:FindFirstChild("Humanoid") then
-                    player.Character.Humanoid:UnequipTools()
-                    task.wait(0.1)
-                    player.Character.Humanoid:EquipTool(item)
-                    task.wait(0.2) -- ensure pet equips before selling
-
-                    local success = pcall(function()
-                        SellPet_RE:FireServer(item.Name)
-                    end)
-
-                    if success then
-                        print("[BeastHub] Sold: " .. item.Name)
-                        soldCount = soldCount + 1
+                -- Check if this is a target pet
+                local isTarget = false
+                for _, name in ipairs(targetPets) do
+                    if petName == name then
+                        isTarget = true
+                        break
                     end
-                    task.wait(delayToSellPets)
+                end
+
+                -- Sell if matches criteria
+                if isTarget and weight and weight < weightTargetBelow then
+                    if player.Character and player.Character:FindFirstChild("Humanoid") then
+                        player.Character.Humanoid:UnequipTools()
+                        task.wait(0.1)
+                        player.Character.Humanoid:EquipTool(item)
+                        task.wait(0.2) -- ensure pet equips before selling
+
+                        local success = pcall(function()
+                            SellPet_RE:FireServer(item.Name)
+                        end)
+
+                        if success then
+                            print("[BeastHub] Sold: " .. item.Name)
+                            soldCount = soldCount + 1
+                        end
+                        task.wait(delayToSellPets)
+                    end
                 end
             end
         end
