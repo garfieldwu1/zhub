@@ -3896,6 +3896,10 @@ Pets:CreateDivider()
 local automationModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/Adobo1/Testing/refs/heads/main/Zhub_Automation2.lua"))()
 automationModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, nil, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
 
+
+local automationModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/bladstaz01/beasthub/refs/heads/main/bhubevent.lua"))()
+automationModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, nil, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
+
     
 --Other Egg settings
 PetEggs:CreateSection("Egg settings")
