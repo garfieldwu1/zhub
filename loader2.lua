@@ -808,7 +808,7 @@ local Toggle_autoPlaceEggs = PetEggs:CreateToggle({
                         end
                     end
 
-                    task.wait(1.5)
+                    task.wait(2)
                 end
             end)
         else
