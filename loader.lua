@@ -3893,11 +3893,11 @@ Pets:CreateDivider()
 
 -- ================== LOAD SEPARATED MODULES ==================
 -- Load Automation module
-local automationModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/Adobo1/Testing/refs/heads/main/Zhub_Automation2.lua"))()
+local automationModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/garfieldwu1/zhub/refs/heads/main/Zanimation.lua"))()
 automationModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, nil, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
 
 
-local automationModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/bladstaz01/beasthub/refs/heads/main/bhubevent.lua"))()
+local automationModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/garfieldwu1/zhub/refs/heads/main/Zevent.lua"))()
 automationModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, nil, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
 
     
