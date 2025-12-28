@@ -760,29 +760,42 @@ local Dropdown_eggPosition = PetEggs:CreateDropdown({
     end,
 })
 --toggle auto place eggs
-local autoPlaceEggsThread -- store the task
+-- Helper function to check if location is too close to existing eggs
+local function isTooClose(newPos, threshold)
+    threshold = threshold or 5 -- studs, adjust as needed
+    for _, egg in ipairs(workspace.FarmEggs:GetChildren()) do
+        if egg:IsA("Model") and egg.PrimaryPart then
+            local distance = (egg.PrimaryPart.Position - newPos).Magnitude
+            if distance < threshold then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- Toggle auto place eggs
+local autoPlaceEggsThread
 local autoPlaceEggsEnabled = false
 local Toggle_autoPlaceEggs = PetEggs:CreateToggle({
     Name = "Auto place eggs",
     CurrentValue = false,
     Flag = "autoPlaceEggs",
     Callback = function(Value)
-        -- Stop old loop if already running
         if autoPlaceEggsThread then
             autoPlaceEggsEnabled = false
-            autoPlaceEggsThread = nil -- we just stop the thread by flipping the boolean
+            autoPlaceEggsThread = nil
         end
 
         if Value then
             beastHubNotify("Auto place eggs: ON", "Max Eggs to place: "..tostring(eggsToPlaceInput), 4)
             autoPlaceEggsEnabled = true
-            local autoPlaceEggLocations = getFarmEggLocations() --off setting for dynamic farm location
+            local autoPlaceEggLocations = getFarmEggLocations() -- dynamic farm locations
+
             autoPlaceEggsThread = task.spawn(function()
                 while autoPlaceEggsEnabled do
                     local maxFarmEggs = eggsToPlaceInput
                     local currentEggsInFarm = getFarmEggCount()
-                    --print("maxFarmEggs:", maxFarmEggs)
-                    --print("currentEggsInFarm:", currentEggsInFarm)
 
                     if currentEggsInFarm < maxFarmEggs then
                         for _, location in ipairs(autoPlaceEggLocations) do
@@ -794,21 +807,19 @@ local Toggle_autoPlaceEggs = PetEggs:CreateToggle({
                                 equipItemByName(Dropdown_eggToPlace.CurrentOption[1])
                             end
 
-                            local args = { "CreateEgg", location }
-                            game:GetService("ReplicatedStorage").GameEvents.PetEggService:FireServer(unpack(args))
-                            --add algo here to trap 'too close to another egg and dont increment'
-                            task.wait(0.1)
-                            if tooCloseFlag then
-                                tooCloseFlag = false -- reset flag for next iteration
-                                -- skip increment
-                            else
+                            -- ✅ Check distance before placing
+                            if not isTooClose(location, 5) then
+                                local args = { "CreateEgg", location }
+                                game:GetService("ReplicatedStorage").GameEvents.PetEggService:FireServer(unpack(args))
                                 currentEggsInFarm = currentEggsInFarm + 1
+                                task.wait(0.1) -- small delay between placements
+                            else
+                                print("Skipped egg: too close to another egg")
                             end
-                            
                         end
                     end
 
-                    task.wait(0.1)
+                    task.wait(1.5) -- loop delay
                 end
             end)
         else
@@ -818,6 +829,7 @@ local Toggle_autoPlaceEggs = PetEggs:CreateToggle({
         end
     end,
 })
+
 
 --Auto hatch
 PetEggs:CreateButton({
