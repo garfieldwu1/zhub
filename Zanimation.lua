@@ -2067,6 +2067,20 @@ function M.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equ
         end,
     })
     Automation:CreateDivider()
+
+        --bring back
+    Event:CreateButton({
+        Name = "Bring Back Christmas Event Platforms",
+        Callback = function()
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local adventPlatform = ReplicatedStorage.Modules.UpdateService:WaitForChild("AdventPlatformOld")
+            local lumberjackPlatform = ReplicatedStorage.Modules.UpdateService:WaitForChild("LumberjackPlatformOld")
+            adventPlatform.Parent = workspace
+            lumberjackPlatform.Parent = workspace
+
+        end,
+    })
+    Event:CreateDivider()
 end
 
 return M
