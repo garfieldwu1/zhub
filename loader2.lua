@@ -1160,7 +1160,6 @@ task.wait(.5) --to wait for loadout variables to load
 --Only two variables needed
 local smartAutoHatchingEnabled = false
 local smartAutoHatchingThread = nil
-local cancelAnimationPaused = false
 
 local sessionHugeList = {}
 local Toggle_smartAutoHatch = PetEggs:CreateToggle({
@@ -1247,10 +1246,6 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                         --all eggs now must start with koi loadout, infinite loadout has been patched 10/24/25
                         beastHubNotify("Switching to Kois", "", 8)
                         Toggle_autoPlaceEggs:Set(false)
-                        -- Pause cancel animation before switching to Koi loadout
-                        if cancelAnimationEnabled then
-                            cancelAnimationPaused = true
-                        end
                         myFunctions.switchToLoadout(koiLoady)
                         task.wait(12)
 
@@ -1424,10 +1419,6 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                     --print("Now switching back to main loadout...")
                                     task.wait(2)
                                     myFunctions.switchToLoadout(incubatingLoady)
-                                    -- Resume cancel animation after switching back to Eagles loadout
-                                    if cancelAnimationEnabled then
-                                        cancelAnimationPaused = false
-                                    end
                                 end)
                             end)
                             if success then
@@ -4695,23 +4686,17 @@ Event:CreateButton({
                 local activeCancelTasks = {}
                 cancelAnimationThread = task.spawn(function()
                     while cancelAnimationEnabled do
-                        -- Wait if pause flag is set
-                        while cancelAnimationPaused and cancelAnimationEnabled do
-                            task.wait(0.1)
+                        local anyReady = false
+                        local petEggsList = myFunctions.getMyFarmPetEggs()
+                        for _, egg in pairs(petEggsList) do
+                            if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
+                                anyReady = false
+                                -- I turn to false
+                                break
+                            end
                         end
-                        
-                        if not cancelAnimationEnabled then break end
-                        
-                       -- local anyReady = false
-                        -- local petEggsList = myFunctions.getMyFarmPetEggs()
-                       -- for _, egg in pairs(petEggsList) do
-                        --    if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
-                             --   anyReady = true
-                             --   break
-                         --   end
-                     --   end
 
-                      --  if not anyReady then
+                        if not anyReady then
                             pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
                             for _, pickupEntry in ipairs(pickupList) do
                                 if not cancelAnimationEnabled then break end
@@ -4722,7 +4707,7 @@ Event:CreateButton({
                                         activeCancelTasks[petId] = true
                                         task.spawn(function()
                                             task.wait(animDelay)
-                                            if cancelAnimationEnabled and isPetInWorkspace(petId) and not cancelAnimationPaused then
+                                            if cancelAnimationEnabled and isPetInWorkspace(petId) then
                                                 -- Cancel animation WITHOUT pickup animation as requested
                                                 game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("UnequipPet", petId)
                                                 task.wait(0.05)
@@ -4734,7 +4719,7 @@ Event:CreateButton({
                                     end
                                 end
                             end
-                       -- end
+                        end
                         task.wait(0.05)
                     end
                     cancelAnimationThread = nil
