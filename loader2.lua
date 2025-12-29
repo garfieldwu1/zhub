@@ -797,7 +797,7 @@ local Toggle_autoPlaceEggs = PetEggs:CreateToggle({
                             local args = { "CreateEgg", location }
                             game:GetService("ReplicatedStorage").GameEvents.PetEggService:FireServer(unpack(args))
                             --add algo here to trap 'too close to another egg and dont increment'
-                            task.wait(0.5)
+                            task.wait(0.1)
                             if tooCloseFlag then
                                 tooCloseFlag = false -- reset flag for next iteration
                                 -- skip increment
