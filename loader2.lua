@@ -4600,7 +4600,7 @@ Event:CreateButton({
     local cancelAnimationThread = nil
     local cooldownListenerCancelAnim = nil
     local petCooldownsCancelAnim = {}
-    
+
     local function isPetInWorkspace(petId)
         local petsFolder = workspace:FindFirstChild("PetsPhysical")
         if not petsFolder then return false end
@@ -4658,7 +4658,7 @@ Event:CreateButton({
                         local logs = dataService:GetData()
                         return logs
                     end
-                    
+
                     local function equippedPets()
                         local playerData = getPlayerData()
                         if not playerData.PetsData then
@@ -4691,7 +4691,7 @@ Event:CreateButton({
 
                     return false
                 end
-                
+
                 beastHubNotify("Cancel animation running", "", 3)
                 local location = CFrame.new(getFarmSpawnCFrame():PointToWorldSpace(Vector3.new(8,0,-50)))
 
@@ -4862,7 +4862,7 @@ Event:CreateButton({
             dropdown_selectPetsForFeed:Refresh(namesToId)
         end,
     })
-    
+
     local input_autoFeedPercentage = Automation:CreateInput({
         Name = "Auto feed when Hunger % is:",
         CurrentValue = "25",
