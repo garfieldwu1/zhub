@@ -1286,10 +1286,8 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                     if petName and stringKG and smartAutoHatchingEnabled then
                                                         -- Trim whitespace in case it grew from previous runs
                                                         stringKG = stringKG:match("^%s*(.-)%s*$") 
-                                                        local currentNumberKG = tonumber(stringKG)
-                                                        local isRare = false
-                                                        local isHuge = false
                                                         local playerNameWebhook = game.Players.LocalPlayer.Name
+                                                        --print("stringKG trimmed: "..stringKG)
 
                                                         -- check if Rare
                                                         if type(rarePets) == "table" then
@@ -1299,24 +1297,31 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                                     break
                                                                 end
                                                             end
+                                                        else
+                                                            --exit if have trouble getting rare pets
+                                                            warn("rarePets is not a table")
+                                                            return
                                                         end
 
                                                         -- check if Huge
-                                                        if currentNumberKG then
-                                                            if currentNumberKG >= 3 then
-                                                                isHuge = true
-                                                            end
+                                                        local currentNumberKG = tonumber(stringKG)
+                                                        if not currentNumberKG then
+                                                            warn("Error in getting pet Size")
+                                                            return
+                                                        end
+                                                        if currentNumberKG < 3 then
+                                                            isHuge = false
+                                                        else
+                                                            isHuge = true
                                                         end
 
-                                                        local isInAntiHatch = isInAntiHatchList(petName)
-                                                        local isSkipKG = (skipHatchAboveKG > 0 and currentNumberKG and currentNumberKG >= skipHatchAboveKG)
-
-                                                        if (isRare or isHuge) and not (isInAntiHatch or isSkipKG) then
+                                                        --deciding loadout code below
+                                                        if isRare or isHuge then
                                                             rareOrHugeFound = true
                                                             Toggle_autoPlaceEggs:Set(false)
                                                         end
 
-                                                        if isHuge and not isSkipKG and not isInAntiHatch then
+                                                        if isHuge then
                                                             beastHubNotify("Skipping Huge!", "", 2)
                                                             local targetHuge = petName..stringKG
                                                             print("targetHuge")
@@ -4681,16 +4686,16 @@ Event:CreateButton({
                 local activeCancelTasks = {}
                 cancelAnimationThread = task.spawn(function()
                     while cancelAnimationEnabled do
-                        local anyReady = false
-                        local petEggsList = myFunctions.getMyFarmPetEggs()
-                        for _, egg in pairs(petEggsList) do
-                            if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
-                                anyReady = true
-                                break
-                            end
-                        end
+                       -- local anyReady = false
+                        -- local petEggsList = myFunctions.getMyFarmPetEggs()
+                       -- for _, egg in pairs(petEggsList) do
+                        --    if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
+                             --   anyReady = true
+                             --   break
+                         --   end
+                     --   end
 
-                        if not anyReady then
+                      --  if not anyReady then
                             pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
                             for _, pickupEntry in ipairs(pickupList) do
                                 if not cancelAnimationEnabled then break end
@@ -4713,7 +4718,7 @@ Event:CreateButton({
                                     end
                                 end
                             end
-                        end
+                       -- end
                         task.wait(0.05)
                     end
                     cancelAnimationThread = nil
