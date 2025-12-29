@@ -1343,7 +1343,53 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                             Toggle_autoPlaceEggs:Set(false)
                                                         end
 
-                                                        if isHuge then
+                                                        local shouldBronto = false
+                                                        if autoBrontoAntiHatch and brontoLoady and brontoLoady ~= "None" then
+                                                            if isHuge then
+                                                                shouldBronto = true
+                                                            elseif skipHatchAboveKG > 0 and currentNumberKG >= skipHatchAboveKG then
+                                                                shouldBronto = true
+                                                            elseif isInAntiHatchList(petName) then
+                                                                shouldBronto = true
+                                                            end
+                                                        end
+
+                                                        if shouldBronto then
+                                                            beastHubNotify("Switching to Bronto Loadout", "Priority Pet/Size: "..petName, 8)
+                                                            myFunctions.switchToLoadout(brontoLoady)
+                                                            task.wait(10)
+                                                            local args = {
+                                                                [1] = "HatchPet";
+                                                                [2] = egg
+                                                            }
+                                                            game:GetService("ReplicatedStorage"):WaitForChild("GameEvents", 9e9):WaitForChild("PetEggService", 9e9):FireServer(unpack(args))
+                                                            sessionHatchCount = sessionHatchCount + 1
+                                                            task.wait(0.5)
+
+                                                            -- Webhook for Huge/Rare inside Bronto logic
+                                                            local playerNameWebhook = game.Players.LocalPlayer.Name
+                                                            local message = nil
+                                                            if isRare and webhookRares then
+                                                                message = "[BeastHub] "..playerNameWebhook.." | Rare hatched: " .. tostring(petName) .. "=" .. tostring(currentNumberKG) .. "KG |Egg hatch # "..tostring(sessionHatchCount)
+                                                            elseif isHuge and webhookHuge then
+                                                                message = "[BeastHub] "..playerNameWebhook.." | Huge hatched: " .. tostring(petName) .. "=" .. tostring(currentNumberKG) .. "KG |Egg hatch # "..tostring(sessionHatchCount)
+                                                            end
+                                                            if message and webhookURL and webhookURL ~= "" then
+                                                                sendDiscordWebhook(webhookURL, message)
+                                                            end
+
+                                                            myFunctions.switchToLoadout(koiLoady)
+                                                            task.wait(10)
+                                                            
+                                                            -- If it was a Huge, we still want to log it to the session list to prevent duplicate webhooks if the logic falls through
+                                                            if isHuge then
+                                                                local targetHuge = petName..stringKG
+                                                                if notInHugeList(sessionHugeList, targetHuge) then
+                                                                    table.insert(sessionHugeList, targetHuge)
+                                                                end
+                                                            end
+
+                                                        elseif isHuge then
                                                             beastHubNotify("Skipping Huge!", "", 2)
                                                             local targetHuge = petName..stringKG
                                                             print("targetHuge")
@@ -1364,22 +1410,7 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                             beastHubNotify("Skipping egg above "..tostring(skipHatchAboveKG).."KG!", petName.." = "..stringKG.."KG", 3)
 
                                                         elseif isInAntiHatchList(petName) then
-                                                            if autoBrontoAntiHatch and brontoLoady and brontoLoady ~= "None" then
-                                                                beastHubNotify("Switching to Bronto Loadout", "Anti-Hatch Pet: "..petName, 8)
-                                                                myFunctions.switchToLoadout(brontoLoady)
-                                                                task.wait(10)
-                                                                local args = {
-                                                                    [1] = "HatchPet";
-                                                                    [2] = egg
-                                                                }
-                                                                game:GetService("ReplicatedStorage"):WaitForChild("GameEvents", 9e9):WaitForChild("PetEggService", 9e9):FireServer(unpack(args))
-                                                                sessionHatchCount = sessionHatchCount + 1
-                                                                task.wait(0.5)
-                                                                myFunctions.switchToLoadout(koiLoady)
-                                                                task.wait(10)
-                                                            else
-                                                                beastHubNotify("Skipping Anti-Hatch Pet!", petName.." = "..stringKG.."KG", 3)
-                                                            end
+                                                            beastHubNotify("Skipping Anti-Hatch Pet!", petName.." = "..stringKG.."KG", 3)
 
                                                         else
 
