@@ -4600,7 +4600,7 @@ Event:CreateButton({
     local cancelAnimationThread = nil
     local cooldownListenerCancelAnim = nil
     local petCooldownsCancelAnim = {}
-    
+
     local function isPetInWorkspace(petId)
         local petsFolder = workspace:FindFirstChild("PetsPhysical")
         if not petsFolder then return false end
@@ -4658,7 +4658,7 @@ Event:CreateButton({
                         local logs = dataService:GetData()
                         return logs
                     end
-                    
+
                     local function equippedPets()
                         local playerData = getPlayerData()
                         if not playerData.PetsData then
@@ -4691,7 +4691,7 @@ Event:CreateButton({
 
                     return false
                 end
-                
+
                 beastHubNotify("Cancel animation running", "", 3)
                 local location = CFrame.new(getFarmSpawnCFrame():PointToWorldSpace(Vector3.new(8,0,-50)))
 
@@ -4885,7 +4885,7 @@ Event:CreateButton({
                             local logs = dataService:GetData()
                             return logs
                         end
-                        
+
                         local playerData = getPlayerData()
                         local petData = playerData.PetsData.PetInventory.Data
                         for id, data in pairs(petData) do
@@ -4921,7 +4921,7 @@ Event:CreateButton({
                             continue
                         end
 
-                        
+
                         for _, pet in ipairs(petList) do
                             for _, toy in ipairs(toyList) do
                                 if not autoPetBoostEnabled then
@@ -4930,28 +4930,32 @@ Event:CreateButton({
 
                                 local petId = (pet:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
                                 local toyName = toy
-                                
+
                                 --check if already boosted
                                 local timeLeft = checkBoostTimeLeft(toyName, petId)
 
                                 --boost only if good to boost
                                 -- beastHubNotify("timeLeft: "..tostring(timeLeft), "", "1")
-                                if timeLeft <= 0 then
+                                if (timeLeft or 0) <= 0 then
                                     -- print("inside if")
                                     --equip boost
                                     if equipItemByName(toyName) then
                                         task.wait(.1)
                                         --boost
                                         local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                                        local PetBoostService = ReplicatedStorage.GameEvents.PetBoostService -- RemoteEvent 
-                                        PetBoostService:FireServer(
-                                            "ApplyBoost",
-                                            petId
-                                        )
+                                        local PetBoostService = ReplicatedStorage.GameEvents:FindFirstChild("PetBoostService") -- RemoteEvent 
+                                        if PetBoostService then
+                                            PetBoostService:FireServer(
+                                                "ApplyBoost",
+                                                petId
+                                            )
+                                        else
+                                            warn("PetBoostService not found!")
+                                        end
                                     else
                                         -- print("not good to boost")
                                     end
-                                    
+
                                 end
                                 task.wait(0.2)
                             end
@@ -5066,7 +5070,7 @@ Event:CreateButton({
             })
         end,
     })
-    
+
     local input_autoFeedPercentage = Automation:CreateInput({
         Name = "Auto feed when Hunger % is:",
         CurrentValue = "25",
@@ -5267,9 +5271,15 @@ Event:CreateButton({
                                 while hungerPercent < targetHunger and autoPetFeedEnabled do
                                     local fruitUid = getFeedFruitUid(playerData, fruitList)
                                     if fruitUid then
-                                        equipFruitById(fruitUid)
+                                        -- equipFruitById(fruitUid) -- REMOVED if equipFruitById is not defined or causing issues
                                         task.wait()
-                                        ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
+                                        local ActivePetService = game:GetService("ReplicatedStorage").GameEvents:FindFirstChild("ActivePetService")
+                                        if ActivePetService then
+                                            ActivePetService:FireServer("Feed", petId)
+                                        else
+                                            warn("ActivePetService not found!")
+                                            break
+                                        end
                                         task.wait(0.2)
                                     else
                                         break
@@ -5291,13 +5301,6 @@ Event:CreateButton({
             end
         end,
     })
-
-
-
-
-
-
-
 
     Automation:CreateDivider()
 
