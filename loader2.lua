@@ -1045,13 +1045,20 @@ local sealsLoady
 local Paragraph_selectedPets = PetEggs:CreateParagraph({Title = "Auto Sell Pets:", Content = "No pets selected."})
 local Dropdown_sealsLoadoutNum = PetEggs:CreateDropdown({
     Name = "Select 'Seals' loadout",
-    Options = {"None", "1", "2", "3","4","5","6", "custom_1", "custom_2", "custom_3"},
+    Options = {"None", "1", "2", "3","4","5","6","custom_1","custom_2","custom_3"},
     CurrentOption = {},
     MultipleOptions = false,
     Flag = "sealsLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
     Callback = function(Options)
         --if not Options or not Options[1] then return end
-        sealsLoady = tonumber(Options[1])
+        local value = Options[1]
+        if value == "None" then
+            sealsLoady = "None"
+        elseif string.match(value, "^custom_") then
+            sealsLoady = value
+        else
+            sealsLoady = tonumber(value)
+        end
     end,
 })
 local suggestedAutoSellList = {
@@ -1198,24 +1205,38 @@ local sessionHatchCount = 0
 
 PetEggs:CreateDropdown({
     Name = "Incubating/Eagles Loadout",
-    Options = {"None", "1", "2", "3","4","5","6", "custom_1", "custom_2", "custom_3"},
+    Options = {"None", "1", "2", "3","4","5","6","custom_1","custom_2","custom_3"},
     CurrentOption = {},
     MultipleOptions = false,
     Flag = "incubatingLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
     Callback = function(Options)
         --if not Options or not Options[1] then return end
-        incubatingLoady = tonumber(Options[1])
+        local value = Options[1]
+        if value == "None" then
+            incubatingLoady = "None"
+        elseif string.match(value, "^custom_") then
+            incubatingLoady = value
+        else
+            incubatingLoady = tonumber(value)
+        end
     end,
 })
 PetEggs:CreateDropdown({
     Name = "Koi Loadout",
-    Options = {"None", "1", "2", "3","4","5","6", "custom_1", "custom_2", "custom_3"},
+    Options = {"None", "1", "2", "3","4","5","6","custom_1","custom_2","custom_3"},
     CurrentOption = {},
     MultipleOptions = false,
     Flag = "koiLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
     Callback = function(Options)
         --if not Options or not Options[1] then return end
-        koiLoady = tonumber(Options[1])
+        local value = Options[1]
+        if value == "None" then
+            koiLoady = "None"
+        elseif string.match(value, "^custom_") then
+            koiLoady = value
+        else
+            koiLoady = tonumber(value)
+        end
     end,
 })
 local autoBrontoAntiHatch = false
@@ -1226,7 +1247,14 @@ PetEggs:CreateDropdown({
     MultipleOptions = false,
     Flag = "brontoLoadoutNum",
     Callback = function(Options)
-        brontoLoady = tonumber(Options[1])
+        local value = Options[1]
+        if value == "None" then
+            brontoLoady = "None"
+        elseif string.match(value, "^custom_") then
+            brontoLoady = value
+        else
+            brontoLoady = tonumber(value)
+        end
     end,
 })
 
@@ -5208,3 +5236,96 @@ Event:CreateButton({
                     local ReplicatedStorage = game:GetService("ReplicatedStorage")
                     local function getPlayerData()
                         return require(ReplicatedStorage.Modules.DataService):GetData()
+                    end
+                    local PetRegistry = require(ReplicatedStorage.Data.PetRegistry.PetList)
+                    local petDefaultHunger = {}
+                    for petName, data in pairs(PetRegistry) do
+                        if type(data) == "table" and data.DefaultHunger then
+                            petDefaultHunger[petName] = data.DefaultHunger
+                        end
+                    end
+
+                    while autoPetFeedEnabled do
+                        local petList = dropdown_selectPetsForFeed.CurrentOption or {}
+                        local fruitList = dropdown_selectedFruitForAutoFeed.CurrentOption or {}
+                        local hungerLimit = tonumber(input_autoFeedPercentage.CurrentValue) or 25
+                        local targetHunger = tonumber(input_autoFeedUntilPercentage.CurrentValue) or 100
+
+                        if #petList > 0 and #fruitList > 0 then
+                            local playerData = getPlayerData()
+                            for _, pet in ipairs(petList) do
+                                local petId = (pet:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
+                                local pData = playerData.PetsData.PetInventory.Data[petId]
+                                if pData then
+                                    local defHunger = petDefaultHunger[pData.PetType]
+                                    if defHunger then
+                                        local hungerPct = (pData.PetData.Hunger / defHunger) * 100
+                                        if hungerPct <= hungerLimit then
+                                            while hungerPct < targetHunger and autoPetFeedEnabled do
+                                                local fruitUid = nil
+                                                for uid, item in pairs(playerData.InventoryData) do
+                                                    if item.ItemType == "Holdable" and table.find(fruitList, item.ItemData.ItemName) then
+                                                        fruitUid = uid
+                                                        break
+                                                    end
+                                                end
+                                                if fruitUid then
+                                                    ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
+                                                    task.wait(0.2)
+                                                    playerData = getPlayerData()
+                                                    pData = playerData.PetsData.PetInventory.Data[petId]
+                                                    hungerPct = (pData.PetData.Hunger / defHunger) * 100
+                                                else
+                                                    break
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        task.wait(2)
+                    end
+                    autoPetFeedThread = nil
+                end)
+            end
+        end,
+    })
+
+    Automation:CreateDivider()
+
+    -- CUSTOM
+
+    -- END
+
+    local function antiAFK()
+    -- Prevent multiple connections
+    if getgenv().AntiAFKConnection then
+        getgenv().AntiAFKConnection:Disconnect()
+        print("♻️ Previous Anti-AFK connection disconnected")
+    end
+
+    local vu = game:GetService("VirtualUser")
+    getgenv().AntiAFKConnection = game:GetService("Players").LocalPlayer.Idled:Connect(function()
+        vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        -- print("🌀 AFK protection triggered – simulated activity sent")
+    end)
+
+    print("✅ Anti-AFK enabled")
+end
+antiAFK()
+
+-- LOAD CONFIG / must be the last part of everything 
+local success, err = pcall(function()
+    Rayfield:LoadConfiguration() -- Load config
+    local playerNameWebhook = game.Players.LocalPlayer.Name
+    local url = "https://discord.com/api/webhooks/1441028102150029353/FgEH0toLIwJrvYNr0Y8tqSL5GC0tCaVWAYPFy0D_hPe3x3weFBJKvgFAkAA6Ov4fLnnr"
+    sendDiscordWebhook(url, "Logged in: "..playerNameWebhook)
+end)
+if success then
+    print("Config file loaded")
+else
+    print("Error loading config file "..err)
+end
