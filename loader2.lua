@@ -4703,8 +4703,18 @@ Event:CreateButton({
                         local petEggsList = myFunctions.getMyFarmPetEggs()
                         for _, egg in pairs(petEggsList) do
                             if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
-                                anyReady = true
-                                break
+                                local petName = egg.Name -- Assuming egg name matches what's in antiHatchPetsList
+                                local isAntiHatch = false
+                                for _, antiPet in ipairs(antiHatchPetsList) do
+                                    if antiPet == petName then
+                                        isAntiHatch = true
+                                        break
+                                        end
+                                end
+                                if not isAntiHatch then
+                                    anyReady = true
+                                    break
+                                end
                             end
                         end
 
