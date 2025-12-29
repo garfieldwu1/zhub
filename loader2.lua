@@ -78,207 +78,7 @@ mainModule.init(Rayfield, beastHubNotify, Window, myFunctions, reloadScript, bea
 local Shops = Window:CreateTab("Shops", "circle-dollar-sign")
 local Pets = Window:CreateTab("Pets", "cat")
 local PetEggs = Window:CreateTab("Eggs", "egg")
-    Automation:CreateSection("Custom Loadouts")
-    local customLoadout1Parag = Automation:CreateParagraph({Title = "Custom 1:", Content = "None"})
-    Automation:CreateButton({
-        Name = "Set current Team as Custom 1",
-        Callback = function()
-            local saveFolder = "BeastHub"
-            local saveFile = saveFolder.."/custom_1.txt"
-            if not isfolder(saveFolder) then makefolder(saveFolder) end
-            
-            local function getPlayerData()
-                return require(game:GetService("ReplicatedStorage").Modules.DataService):GetData()
-            end
-            
-            local function equippedPets()
-                local data = getPlayerData()
-                return data and data.PetsData and data.PetsData.EquippedPets or nil
-            end
-            
-            local function getPetNameUsingId(uid)
-                local data = getPlayerData()
-                if data and data.PetsData and data.PetsData.PetInventory and data.PetsData.PetInventory.Data then
-                    local petData = data.PetsData.PetInventory.Data[uid]
-                    if petData then
-                        return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
-                    end
-                end
-            end
-            
-            local equipped = equippedPets()
-            local petsString = ""
-            if equipped then
-                for _, id in ipairs(equipped) do
-                    local petName = getPetNameUsingId(id)
-                    if petName then
-                        petsString = petsString..petName..">"..id.."|\n"
-                    end
-                end
-            end
-            
-            if petsString ~= "" then
-                customLoadout1Parag:Set({Title = "Custom 1:", Content = petsString})
-                writefile(saveFile, petsString)
-                beastHubNotify("Saved Custom 1!", "", 3)
-            else
-                beastHubNotify("No pets equipped", "", 3)
-            end
-        end
-    })
-    Automation:CreateButton({
-        Name = "Load Custom 1",
-        Callback = function()
-            local function parseFromFile()
-                local ids = {}
-                local ok, content = pcall(function() return readfile("BeastHub/custom_1.txt") end)
-                if not ok then return ids end
-                for line in string.gmatch(content, "([^\n]+)") do
-                    local id = string.match(line, "({[%w%-]+})")
-                    if id then table.insert(ids, id) end
-                end
-                return ids
-            end
-            
-            local petIds = parseFromFile()
-            if #petIds == 0 then
-                beastHubNotify("Custom 1 is empty", "", 3)
-                return
-            end
-            
-            myFunctions.switchToLoadout(1, getFarmSpawnCFrame, beastHubNotify) -- Fallback if switchToLoadout supports ID
-            -- Manual equip logic if needed
-            local spawnCFrame = getFarmSpawnCFrame()
-            local location = spawnCFrame and (spawnCFrame * CFrame.new(0, 0, -5)) or CFrame.new(0,0,0)
-            
-            game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("UnequipAll")
-            task.wait(0.5)
-            for _, id in ipairs(petIds) do
-                game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("EquipPet", id, location)
-                task.wait(0.1)
-            end
-            beastHubNotify("Loaded Custom 1", "", 3)
-        end
-    })
-    
-    Automation:CreateDivider()
-    
-    local customLoadout2Parag = Automation:CreateParagraph({Title = "Custom 2:", Content = "None"})
-    Automation:CreateButton({
-        Name = "Set current Team as Custom 2",
-        Callback = function()
-            local saveFolder = "BeastHub"
-            local saveFile = saveFolder.."/custom_2.txt"
-            if not isfolder(saveFolder) then makefolder(saveFolder) end
-            local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
-            local data = dataService:GetData()
-            local equipped = data and data.PetsData and data.PetsData.EquippedPets
-            local petsString = ""
-            if equipped then
-                for _, id in ipairs(equipped) do
-                    local petData = data.PetsData.PetInventory.Data[id]
-                    if petData then
-                        local petName = petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
-                        petsString = petsString..petName..">"..id.."|\n"
-                    end
-                end
-            end
-            if petsString ~= "" then
-                customLoadout2Parag:Set({Title = "Custom 2:", Content = petsString})
-                writefile(saveFile, petsString)
-                beastHubNotify("Saved Custom 2!", "", 3)
-            else
-                beastHubNotify("No pets equipped", "", 3)
-            end
-        end
-    })
-    Automation:CreateButton({
-        Name = "Load Custom 2",
-        Callback = function()
-            local ok, content = pcall(function() return readfile("BeastHub/custom_2.txt") end)
-            if not ok then beastHubNotify("Custom 2 empty", "", 3) return end
-            local petIds = {}
-            for line in string.gmatch(content, "([^\n]+)") do
-                local id = string.match(line, "({[%w%-]+})")
-                if id then table.insert(petIds, id) end
-            end
-            local spawnCFrame = getFarmSpawnCFrame()
-            local location = spawnCFrame and (spawnCFrame * CFrame.new(0, 0, -5)) or CFrame.new(0,0,0)
-            game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("UnequipAll")
-            task.wait(0.5)
-            for _, id in ipairs(petIds) do
-                game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("EquipPet", id, location)
-                task.wait(0.1)
-            end
-            beastHubNotify("Loaded Custom 2", "", 3)
-        end
-    })
-
-    Automation:CreateSection("Auto Loadout Switcher")
-    local loadout1 = "None"
-    local loadout2 = "None"
-    local switchDuration1 = 60
-    local switchDuration2 = 60
-    
-    Automation:CreateDropdown({
-        Name = "First Loadout",
-        Options = {"None", "1", "2", "3", "4", "5", "6"},
-        CurrentOption = {"None"},
-        Flag = "firstLoadoutAutoSwitch",
-        Callback = function(Option) loadout1 = Option[1] end
-    })
-    Automation:CreateInput({
-        Name = "Duration (seconds)",
-        PlaceholderText = "60",
-        Flag = "firstLoadoutAutoSwitchDuration",
-        Callback = function(Text) switchDuration1 = tonumber(Text) or 60 end
-    })
-    Automation:CreateDropdown({
-        Name = "Second Loadout",
-        Options = {"None", "1", "2", "3", "4", "5", "6"},
-        CurrentOption = {"None"},
-        Flag = "secondLoadoutAutoSwitch",
-        Callback = function(Option) loadout2 = Option[1] end
-    })
-    Automation:CreateInput({
-        Name = "Duration (seconds)",
-        PlaceholderText = "60",
-        Flag = "secondLoadoutAutoSwitchDuration",
-        Callback = function(Text) switchDuration2 = tonumber(Text) or 60 end
-    })
-    
-    local autoSwitchEnabled = false
-    local autoSwitchThread = nil
-    Automation:CreateToggle({
-        Name = "Auto Loadout Switcher",
-        CurrentValue = false,
-        Flag = "autoLoadoutSwitcher",
-        Callback = function(Value)
-            autoSwitchEnabled = Value
-            if Value then
-                if autoSwitchThread then return end
-                autoSwitchThread = task.spawn(function()
-                    while autoSwitchEnabled do
-                        if loadout1 ~= "None" then
-                            myFunctions.switchToLoadout(tonumber(loadout1), getFarmSpawnCFrame, beastHubNotify)
-                            task.wait(switchDuration1)
-                        end
-                        if not autoSwitchEnabled then break end
-                        if loadout2 ~= "None" then
-                            myFunctions.switchToLoadout(tonumber(loadout2), getFarmSpawnCFrame, beastHubNotify)
-                            task.wait(switchDuration2)
-                        end
-                        task.wait(1)
-                    end
-                    autoSwitchThread = nil
-                end)
-            else
-                autoSwitchEnabled = false
-                autoSwitchThread = nil
-            end
-        end
-    })
-    Automation:CreateDivider()
+local Automation = Window:CreateTab("Automation", "bot")
 local Misc = Window:CreateTab("Misc", "code")
 local Event = Window:CreateTab("Event", "gift")
 -- ===Declarations
@@ -1464,11 +1264,47 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                         local PetEggService = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("PetEggService")
 
 
-                        --all eggs now must start with koi loadout, infinite loadout has been patched 10/24/25
-                        beastHubNotify("Switching to Kois", "", 8)
-                        Toggle_autoPlaceEggs:Set(false)
-                        myFunctions.switchToLoadout(koiLoady)
-                        task.wait(12)
+                        -- Check if any egg needs Bronto BEFORE switching to Koi
+                        local brontoNeededOverall = false
+                        if autoBrontoAntiHatch and brontoLoady and brontoLoady ~= "None" then
+                            for _, egg in pairs(myPetEggs) do
+                                if egg:IsA("Model") then
+                                    local espFolder = egg:FindFirstChild("BhubESP")
+                                    if espFolder then
+                                        local billboard = espFolder:FindFirstChild("EggBillboard")
+                                        if billboard then
+                                            local textLabel = billboard:FindFirstChildWhichIsA("TextLabel")
+                                            if textLabel then
+                                                local text = textLabel.Text
+                                                local petName = text:match('rgb%(%s*0,%s*255,%s*0%s*%)">(.-)</font>%s*=')
+                                                local stringKG = text:match("= (%d+%.?%d*)")
+                                                local currentNumberKG = tonumber(stringKG)
+                                                
+                                                if petName and currentNumberKG then
+                                                    local isHuge = currentNumberKG >= 3
+                                                    if isHuge or (skipHatchAboveKG > 0 and currentNumberKG >= skipHatchAboveKG) or isInAntiHatchList(petName) then
+                                                        brontoNeededOverall = true
+                                                        break
+                                                    end
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+
+                        if brontoNeededOverall then
+                            beastHubNotify("Switching to Bronto Loadout First", "Priority pet detected", 8)
+                            Toggle_autoPlaceEggs:Set(false)
+                            myFunctions.switchToLoadout(brontoLoady)
+                            task.wait(12)
+                        else
+                            beastHubNotify("Switching to Kois", "", 8)
+                            Toggle_autoPlaceEggs:Set(false)
+                            myFunctions.switchToLoadout(koiLoady)
+                            task.wait(12)
+                        end
 
                         --get egg data such as pet name and size
                         --=======================================
