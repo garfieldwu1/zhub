@@ -1060,6 +1060,7 @@ PetEggs:CreateParagraph({
     Content = "1.) Setup your Auto place Eggs above and turn on toggle for auto place eggs.\n2.) Setup your selected pets for Auto Sell above.\n3.) Selected designated loadouts below.\n4.) Turn on Speedhub Egg ESP, then turn on Egg ESP support below"
 })
 local koiLoady
+-- local brontoLoady
 local incubatingLoady
 local webhookRares
 local webhookHuge
@@ -1088,7 +1089,26 @@ PetEggs:CreateDropdown({
         koiLoady = tonumber(Options[1])
     end,
 })
+local autoBrontoAntiHatch = false
+PetEggs:CreateDropdown({
+    Name = "Bronto Loadout",
+    Options = {"None", "1", "2", "3", "4", "5", "6"},
+    CurrentOption = {},
+    MultipleOptions = false,
+    Flag = "brontoLoadoutNum",
+    Callback = function(Options)
+        brontoLoady = tonumber(Options[1])
+    end,
+})
 
+PetEggs:CreateToggle({
+    Name = "Auto Bronto Anti Hatch List",
+    CurrentValue = false,
+    Flag = "autoBrontoAntiHatch",
+    Callback = function(Value)
+        autoBrontoAntiHatch = Value
+    end,
+})
 local skipHatchAboveKG = 0
 PetEggs:CreateDropdown({
     Name = "Skip hatch Above KG (any egg):",
@@ -1189,9 +1209,10 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
 
             --recheck setup
             if not koiLoady or koiLoady == "None"
+            -- or not brontoLoady or brontoLoady == "None"
             or not sealsLoady or sealsLoady == "None"
             or not incubatingLoady or incubatingLoady == "None" then
-                beastHubNotify("Missing setup!", "Please recheck loadouts for koi, seals and turn on EGG ESP Support", 15)
+                beastHubNotify("Missing setup!", "Please recheck loadouts for koi, bronto, seals and turn on EGG ESP Support", 15)
                 return
             end
         end
@@ -1316,6 +1337,7 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                         end
 
                                                         --deciding loadout code below
+                                                        --if isHuge or isRare, swatch loadout bronto, wait 7 sec, hatch this 1 egg
                                                         if isRare or isHuge then
                                                             rareOrHugeFound = true
                                                             Toggle_autoPlaceEggs:Set(false)
@@ -1342,7 +1364,22 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                             beastHubNotify("Skipping egg above "..tostring(skipHatchAboveKG).."KG!", petName.." = "..stringKG.."KG", 3)
 
                                                         elseif isInAntiHatchList(petName) then
-                                                            beastHubNotify("Skipping Anti-Hatch Pet!", petName.." = "..stringKG.."KG", 3)
+                                                            if autoBrontoAntiHatch and brontoLoady and brontoLoady ~= "None" then
+                                                                beastHubNotify("Switching to Bronto Loadout", "Anti-Hatch Pet: "..petName, 8)
+                                                                myFunctions.switchToLoadout(brontoLoady)
+                                                                task.wait(10)
+                                                                local args = {
+                                                                    [1] = "HatchPet";
+                                                                    [2] = egg
+                                                                }
+                                                                game:GetService("ReplicatedStorage"):WaitForChild("GameEvents", 9e9):WaitForChild("PetEggService", 9e9):FireServer(unpack(args))
+                                                                sessionHatchCount = sessionHatchCount + 1
+                                                                task.wait(0.5)
+                                                                myFunctions.switchToLoadout(koiLoady)
+                                                                task.wait(10)
+                                                            else
+                                                                beastHubNotify("Skipping Anti-Hatch Pet!", petName.." = "..stringKG.."KG", 3)
+                                                            end
 
                                                         else
 
@@ -4690,8 +4727,7 @@ Event:CreateButton({
                         local petEggsList = myFunctions.getMyFarmPetEggs()
                         for _, egg in pairs(petEggsList) do
                             if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
-                                anyReady = false
-                                -- I turn to false
+                                anyReady = true
                                 break
                             end
                         end
