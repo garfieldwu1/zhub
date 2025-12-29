@@ -4794,208 +4794,141 @@ Event:CreateButton({
         return false
     end
 
-    -- ... (rest of the script remains unchanged)
+    Automation:CreateToggle({
+        Name = "Cancel Animation",
+        CurrentValue = false,
+        Flag = "cancelAnimation",
+        Callback = function(Value)
+            cancelAnimationEnabled = Value
 
-Automation:CreateToggle({
-    Name = "Cancel Animation",
-    CurrentValue = false,
-    Flag = "cancelAnimation",
-    Callback = function(Value)
-        cancelAnimationEnabled = Value
-
-        if cancelAnimationEnabled then
-            if cancelAnimationThread then return end
-            -- Hook PetCooldownsUpdated
-            cooldownListenerCancelAnim = game:GetService("ReplicatedStorage").GameEvents.PetCooldownsUpdated.OnClientEvent:Connect(function(petId, data)
-                if typeof(data) == "table" and data[1] and data[1].Time then
-                    petCooldownsCancelAnim[petId] = data[1].Time
-                else
-                    petCooldownsCancelAnim[petId] = 0
-                end
-            end)
-
-            -- Validate setup
-            local pickupList, animDelay, t = {}, tonumber(animation_cancelDelay.CurrentValue), 0
-            while t < 3 do
-                pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
-                animDelay = tonumber(animation_cancelDelay.CurrentValue)
-                if #pickupList > 0 then
-                    if not animDelay then
-                        beastHubNotify("Invalid delay/cd input", "", 3)
-                        return
+            if cancelAnimationEnabled then
+                if cancelAnimationThread then return end
+                -- Hook PetCooldownsUpdated
+                cooldownListenerCancelAnim = game:GetService("ReplicatedStorage").GameEvents.PetCooldownsUpdated.OnClientEvent:Connect(function(petId, data)
+                    if typeof(data) == "table" and data[1] and data[1].Time then
+                        petCooldownsCancelAnim[petId] = data[1].Time
+                    else
+                        petCooldownsCancelAnim[petId] = 0
                     end
-                    break
-                end
-                task.wait(0.5)
-                t = t + 0.5
-            end
-            if #pickupList == 0 then
-                beastHubNotify("Missing setup, please select pets", "", 3)
-                return
-            end
+                end)
 
-            local function isEquipped(uuid)
-                local function getPlayerData()
-                    local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
-                    local logs = dataService:GetData()
-                    return logs
-                end
-
-                local function equippedPets()
-                    local playerData = getPlayerData()
-                    if not playerData.PetsData then
-                        warn("PetsData missing")
-                        return nil
-                    end
-
-                    local tempStorage = playerData.PetsData.EquippedPets
-                    if not tempStorage or type(tempStorage) ~= "table" then
-                        warn("EquippedPets missing or invalid")
-                        return nil
-                    end
-
-                    local petIdsList = {}
-                    for _, id in ipairs(tempStorage) do
-                        table.insert(petIdsList, id)
-                    end
-
-                    return petIdsList
-                end
-
-                local equippedPets = equippedPets()
-                if equippedPets then
-                    for _,id in ipairs(equippedPets) do
-                        if id == uuid then
-                            return true
-                        end
-                    end
-                end
-
-                return false
-            end
-
-            beastHubNotify("Cancel animation running", "", 3)
-            local location = CFrame.new(getFarmSpawnCFrame():PointToWorldSpace(Vector3.new(8,0,-50)))
-
-            -- Main auto pickup thread
-            local activeCancelTasks = {}
-            cancelAnimationThread = task.spawn(function()
-                while cancelAnimationEnabled do
-                    -- Removed: Check for anyReady eggs (no longer pausing for ready eggs)
-                    
-                    -- Check if all eggs are ready for hatching logic
-                    local allReady = false
-                    local petEggsList = myFunctions.getMyFarmPetEggs()
-                    local readyCounter = 0
-                    for _, egg in pairs(petEggsList) do
-                        if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
-                            readyCounter = readyCounter + 1
-                        end
-                    end
-                    if #petEggsList > 0 and #petEggsList == readyCounter then
-                        allReady = true
-                    end
-
-                    if allReady then
-                        -- Perform loadout switch and hatching logic (adapted from SMART Auto Hatching)
-                        beastHubNotify("All eggs Ready!", "", 3)
-                        Toggle_autoPlaceEggs:Set(false)
-                        myFunctions.switchToLoadout(koiLoady)  -- Assuming koiLoady is set from SMART Auto Hatching setup
-                        task.wait(12)
-
-                        -- Hatch eggs (skip anti-hatch/skip logic as per user request)
-                        local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                        local PetEggService = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("PetEggService")
-                        for _, egg in ipairs(petEggsList) do
-                            if egg:IsA("Model") then
-                                local args = {
-                                    [1] = "HatchPet",
-                                    [2] = egg
-                                }
-                                PetEggService:FireServer(unpack(args))
-                                task.wait(0.1)
-                            end
-                        end
-
-                        -- Switch to seals loadout for auto sell
-                        task.wait(5)
-                        if sealsLoady and sealsLoady ~= "None" then
-                            game.Players.LocalPlayer.Character.Humanoid:UnequipTools()
-                            beastHubNotify("Switching to seals", "Auto sell triggered", 10)
-                            myFunctions.switchToLoadout(sealsLoady)
-                            game.Players.LocalPlayer.Character.Humanoid:UnequipTools()
-                            task.wait(1)
-                            game.Players.LocalPlayer.Character.Humanoid:UnequipTools()
-                            task.wait(1)
-                            game.Players.LocalPlayer.Character.Humanoid:UnequipTools()
-                            task.wait(1)
-                            game.Players.LocalPlayer.Character.Humanoid:UnequipTools()
-                            task.wait(1)
-                            game.Players.LocalPlayer.Character.Humanoid:UnequipTools()
-                            task.wait(10)
-                            local success, err = pcall(function()
-                                autoSellPets(selectedPetsForAutoSell, sellBelow, function()
-                                    task.wait(2)
-                                    myFunctions.switchToLoadout(incubatingLoady)  -- Assuming incubatingLoady is set
-                                end)
-                            end)
-                            if success then
-                                beastHubNotify("Auto Sell Done", "Successful", 2)
-                            else
-                                warn("Auto Sell failed with error: " .. tostring(err))
-                                beastHubNotify("Auto Sell Failed!", tostring(err), 5)
-                            end
-                        end
-
-                        -- Back to incubating loadout and resume placing eggs
-                        task.wait(2)
-                        beastHubNotify("Back to incubating", "", 6)
-                        Toggle_autoPlaceEggs:Set(true)
-                        task.wait(6)
-                    end
-
-                    -- Always perform pickup logic (no pause for ready eggs)
+                -- Validate setup
+                local pickupList, animDelay, t = {}, tonumber(animation_cancelDelay.CurrentValue), 0
+                while t < 3 do
                     pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
-                    for _, pickupEntry in ipairs(pickupList) do
-                        if not cancelAnimationEnabled then break end
-                        local petId = (pickupEntry:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
-                        if not activeCancelTasks[petId] then
-                            local timeLeft = petCooldownsCancelAnim[petId] or 0
-                            if timeLeft == 0 and isEquipped(petId) then
-                                activeCancelTasks[petId] = true
-                                task.spawn(function()
-                                    task.wait(animDelay)
-                                    if cancelAnimationEnabled and isPetInWorkspace(petId) then
-                                        -- Cancel animation WITHOUT pickup animation as requested
-                                        game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("UnequipPet", petId)
-                                        task.wait(0.05)
-                                        -- equipPetByUuid(petId) -- REMOVED to avoid pickup animation as requested
-                                        game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("EquipPet", petId, location)
-                                    end
-                                    activeCancelTasks[petId] = nil
-                                end)
+                    animDelay = tonumber(animation_cancelDelay.CurrentValue)
+                    if #pickupList > 0 then
+                        if not animDelay then
+                            beastHubNotify("Invalid delay/cd input", "", 3)
+                            return
+                        end
+                        break
+                    end
+                    task.wait(0.5)
+                    t = t + 0.5
+                end
+                if #pickupList == 0 then
+                    beastHubNotify("Missing setup, please select pets", "", 3)
+                    return
+                end
+
+                local function isEquipped(uuid)
+                    local function getPlayerData()
+                        local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
+                        local logs = dataService:GetData()
+                        return logs
+                    end
+
+                    local function equippedPets()
+                        local playerData = getPlayerData()
+                        if not playerData.PetsData then
+                            warn("PetsData missing")
+                            return nil
+                        end
+
+                        local tempStorage = playerData.PetsData.EquippedPets
+                        if not tempStorage or type(tempStorage) ~= "table" then
+                            warn("EquippedPets missing or invalid")
+                            return nil
+                        end
+
+                        local petIdsList = {}
+                        for _, id in ipairs(tempStorage) do
+                            table.insert(petIdsList, id)
+                        end
+
+                        return petIdsList
+                    end
+
+                    local equippedPets = equippedPets()
+                    if equippedPets then
+                        for _,id in ipairs(equippedPets) do
+                            if id == uuid then
+                                return true
                             end
                         end
                     end
-                    
-                    task.wait(0.05)
-                end
-                cancelAnimationThread = nil
-            end)
 
-        else
-            -- Disable
-            if cooldownListenerCancelAnim then
-                cooldownListenerCancelAnim:Disconnect()
-                cooldownListenerCancelAnim = nil
+                    return false
+                end
+
+                beastHubNotify("Cancel animation running", "", 3)
+                local location = CFrame.new(getFarmSpawnCFrame():PointToWorldSpace(Vector3.new(8,0,-50)))
+
+                -- Main auto pickup thread
+                local activeCancelTasks = {}
+                cancelAnimationThread = task.spawn(function()
+                    while cancelAnimationEnabled do
+                        local anyReady = false
+                        local petEggsList = myFunctions.getMyFarmPetEggs()
+                        for _, egg in pairs(petEggsList) do
+                            if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
+                                anyReady = true
+                                break
+                            end
+                        end
+
+                        if not anyReady then
+                            pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
+                            for _, pickupEntry in ipairs(pickupList) do
+                                if not cancelAnimationEnabled then break end
+                                local petId = (pickupEntry:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
+                                if not activeCancelTasks[petId] then
+                                    local timeLeft = petCooldownsCancelAnim[petId] or 0
+                                    if timeLeft == 0 and isEquipped(petId) then
+                                        activeCancelTasks[petId] = true
+                                        task.spawn(function()
+                                            task.wait(animDelay)
+                                            if cancelAnimationEnabled and isPetInWorkspace(petId) then
+                                                -- Cancel animation WITHOUT pickup animation as requested
+                                                game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("UnequipPet", petId)
+                                                task.wait(0.05)
+                                                -- equipPetByUuid(petId) -- REMOVED to avoid pickup animation as requested
+                                                game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("EquipPet", petId, location)
+                                            end
+                                            activeCancelTasks[petId] = nil
+                                        end)
+                                    end
+                                end
+                            end
+                        end
+                        task.wait(0.05)
+                    end
+                    cancelAnimationThread = nil
+                end)
+
+            else
+                -- Disable
+                if cooldownListenerCancelAnim then
+                    cooldownListenerCancelAnim:Disconnect()
+                    cooldownListenerCancelAnim = nil
+                end
+                cancelAnimationEnabled = false
+                cancelAnimationThread = nil
             end
-            cancelAnimationEnabled = false
-            cancelAnimationThread = nil
         end
-    end
-})
+    })
     Automation:CreateDivider()
--- ... (rest of the script remains unchanged)
 
     --Auto Pet boost
     Automation:CreateSection("Auto Pet Boost")
