@@ -73,13 +73,6 @@ end
 local mainModule = loadstring(game:HttpGet("https://pastebin.com/raw/K4yBnmbf"))()
 mainModule.init(Rayfield, beastHubNotify, Window, myFunctions, reloadScript, beastHubIcon)
 
--- Load and Initialize Sub-Modules
-local Zanimation = loadstring(game:HttpGet("https://raw.githubusercontent.com/garfieldwu1/zhub/BeastHub/main/Zanimation.lua"))()
-local Zevent = loadstring(game:HttpGet("https://raw.githubusercontent.com/garfieldwu1/zhub/BeastHub/main/Zevent.lua"))()
-
-Zanimation.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, nil, getMyFarm, getFarmSpawnCFrame)
-Zevent.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, nil, getMyFarm, getFarmSpawnCFrame)
-
 
 
 local Shops = Window:CreateTab("Shops", "circle-dollar-sign")
