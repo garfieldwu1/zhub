@@ -98,7 +98,7 @@ for loadoutNum = 1, 3 do
             local saveFolder = "BeastHub"
             local saveFile = saveFolder.."/custom_"..loadoutNum..".txt"
             if not isfolder(saveFolder) then makefolder(saveFolder) end
-            
+
             local function getPlayerData()
                 local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
                 return dataService:GetData()
@@ -120,7 +120,7 @@ for loadoutNum = 1, 3 do
                     end
                 end
             end
-            
+
             local equipped = equippedPets()
             local petsString = ""
             if equipped then
@@ -129,7 +129,7 @@ for loadoutNum = 1, 3 do
                     petsString = petsString..petName..">"..id.."|\n"
                 end
             end
-            
+
             if equipped and #equipped > 0 then
                 if loadoutNum == 1 then customLoadout1:Set({Title = "Loadout 1", Content = petsString})
                 elseif loadoutNum == 2 then customLoadout2:Set({Title = "Loadout 2", Content = petsString})
@@ -141,7 +141,7 @@ for loadoutNum = 1, 3 do
             end
         end
     })
-    
+
     Custom:CreateButton({
         Name = "Load Loadout " .. loadoutNum,
         Callback = function()
@@ -164,7 +164,7 @@ for loadoutNum = 1, 3 do
                 end)
                 return ok and result or nil
             end
-            
+
             local function parseFromFile()
                 local ids = {}
                 local ok, content = pcall(function() return readfile("BeastHub/custom_"..loadoutNum..".txt") end)
@@ -175,13 +175,13 @@ for loadoutNum = 1, 3 do
                 end
                 return ids
             end
-            
+
             local function getEquippedPets()
                 local playerData = require(game:GetService("ReplicatedStorage").Modules.DataService):GetData()
                 if not playerData.PetsData then return {} end
                 return playerData.PetsData.EquippedPets or {}
             end
-            
+
             local equipped = getEquippedPets()
             if #equipped > 0 then
                 for _, id in ipairs(equipped) do
@@ -189,24 +189,24 @@ for loadoutNum = 1, 3 do
                     task.wait()
                 end
             end
-            
+
             local location = getPetEquipLocation()
             local petIds = parseFromFile()
-            
+
             if #petIds == 0 then
                 beastHubNotify("Loadout "..loadoutNum.." is empty", "", 2)
                 return
             end
-            
+
             for _, id in ipairs(petIds) do
                 game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("PetsService"):FireServer("EquipPet", id, location)
                 task.wait()
             end
-            
+
             beastHubNotify("Loaded Loadout "..loadoutNum, "", 2)
         end
     })
-    
+
     if loadoutNum < 3 then Custom:CreateDivider() end
 end
 
@@ -1192,7 +1192,7 @@ PetEggs:CreateDivider()
 -- Helper function to load loadouts (both custom and numeric)
 local function loadLoadout(loadoutName)
     if not loadoutName or loadoutName == "None" then return end
-    
+
     if loadoutName == "custom_1" or loadoutName == "custom_2" or loadoutName == "custom_3" then
         -- Load custom loadout
         local function getPetEquipLocation()
@@ -1209,7 +1209,7 @@ local function loadLoadout(loadoutName)
             end
             return nil
         end
-        
+
         local function parseCustomFile(filename)
             local ids = {}
             local ok, content = pcall(function() return readfile("BeastHub/"..filename..".txt") end)
@@ -1220,12 +1220,12 @@ local function loadLoadout(loadoutName)
             end
             return ids
         end
-        
+
         local function getEquippedPets()
             local playerData = require(game:GetService("ReplicatedStorage").Modules.DataService):GetData()
             return playerData and playerData.PetsData and playerData.PetsData.EquippedPets or {}
         end
-        
+
         local equipped = getEquippedPets()
         if #equipped > 0 then
             for _, id in ipairs(equipped) do
@@ -1233,10 +1233,10 @@ local function loadLoadout(loadoutName)
                 task.wait()
             end
         end
-        
+
         local location = getPetEquipLocation()
         local petIds = parseCustomFile(loadoutName)
-        
+
         if #petIds > 0 then
             for _, id in ipairs(petIds) do
                 game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("PetsService"):FireServer("EquipPet", id, location)
