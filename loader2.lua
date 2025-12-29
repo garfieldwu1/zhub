@@ -4699,25 +4699,36 @@ Event:CreateButton({
                 local activeCancelTasks = {}
                 cancelAnimationThread = task.spawn(function()
                     while cancelAnimationEnabled do
-                        pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
-                        for _, pickupEntry in ipairs(pickupList) do
-                            if not cancelAnimationEnabled then break end
-                            local petId = (pickupEntry:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
-                            if not activeCancelTasks[petId] then
-                                local timeLeft = petCooldownsCancelAnim[petId] or 0
-                                if timeLeft == 0 and isEquipped(petId) then
-                                    activeCancelTasks[petId] = true
-                                    task.spawn(function()
-                                        task.wait(animDelay)
-                                        if cancelAnimationEnabled and isPetInWorkspace(petId) then
-                                            -- Cancel animation WITHOUT pickup animation as requested
-                                            game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("UnequipPet", petId)
-                                            task.wait(0.05)
-                                            -- equipPetByUuid(petId) -- REMOVED to avoid pickup animation as requested
-                                            game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("EquipPet", petId, location)
-                                        end
-                                        activeCancelTasks[petId] = nil
-                                    end)
+                        local anyReady = false
+                        local petEggsList = myFunctions.getMyFarmPetEggs()
+                        for _, egg in pairs(petEggsList) do
+                            if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
+                                anyReady = true
+                                break
+                            end
+                        end
+
+                        if not anyReady then
+                            pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
+                            for _, pickupEntry in ipairs(pickupList) do
+                                if not cancelAnimationEnabled then break end
+                                local petId = (pickupEntry:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
+                                if not activeCancelTasks[petId] then
+                                    local timeLeft = petCooldownsCancelAnim[petId] or 0
+                                    if timeLeft == 0 and isEquipped(petId) then
+                                        activeCancelTasks[petId] = true
+                                        task.spawn(function()
+                                            task.wait(animDelay)
+                                            if cancelAnimationEnabled and isPetInWorkspace(petId) then
+                                                -- Cancel animation WITHOUT pickup animation as requested
+                                                game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("UnequipPet", petId)
+                                                task.wait(0.05)
+                                                -- equipPetByUuid(petId) -- REMOVED to avoid pickup animation as requested
+                                                game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("EquipPet", petId, location)
+                                            end
+                                            activeCancelTasks[petId] = nil
+                                        end)
+                                    end
                                 end
                             end
                         end
