@@ -3785,12 +3785,12 @@ Pets:CreateDivider()
 
 -- ================== LOAD SEPARATED MODULES ==================
 -- Load Automation module
-local automationModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/garfieldwu1/zhub/refs/heads/main/Zanimation.lua"))()
-automationModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, nil, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
+--local automationModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/garfieldwu1/zhub/refs/heads/main/Zanimation.lua"))()
+--automationModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, nil, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
 
 
-local eventModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/garfieldwu1/zhub/refs/heads/main/Zevent.lua"))()
-eventModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, nil, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
+--local eventModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/garfieldwu1/zhub/refs/heads/main/Zevent.lua"))()
+--eventModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, nil, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
 
 
 --Other Egg settings
