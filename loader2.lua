@@ -98,7 +98,7 @@ for loadoutNum = 1, 3 do
             local saveFolder = "BeastHub"
             local saveFile = saveFolder.."/custom_"..loadoutNum..".txt"
             if not isfolder(saveFolder) then makefolder(saveFolder) end
-
+            
             local function getPlayerData()
                 local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
                 return dataService:GetData()
@@ -120,7 +120,7 @@ for loadoutNum = 1, 3 do
                     end
                 end
             end
-
+            
             local equipped = equippedPets()
             local petsString = ""
             if equipped then
@@ -129,7 +129,7 @@ for loadoutNum = 1, 3 do
                     petsString = petsString..petName..">"..id.."|\n"
                 end
             end
-
+            
             if equipped and #equipped > 0 then
                 if loadoutNum == 1 then customLoadout1:Set({Title = "Loadout 1", Content = petsString})
                 elseif loadoutNum == 2 then customLoadout2:Set({Title = "Loadout 2", Content = petsString})
@@ -141,7 +141,7 @@ for loadoutNum = 1, 3 do
             end
         end
     })
-
+    
     Custom:CreateButton({
         Name = "Load Loadout " .. loadoutNum,
         Callback = function()
@@ -164,7 +164,7 @@ for loadoutNum = 1, 3 do
                 end)
                 return ok and result or nil
             end
-
+            
             local function parseFromFile()
                 local ids = {}
                 local ok, content = pcall(function() return readfile("BeastHub/custom_"..loadoutNum..".txt") end)
@@ -175,13 +175,13 @@ for loadoutNum = 1, 3 do
                 end
                 return ids
             end
-
+            
             local function getEquippedPets()
                 local playerData = require(game:GetService("ReplicatedStorage").Modules.DataService):GetData()
                 if not playerData.PetsData then return {} end
                 return playerData.PetsData.EquippedPets or {}
             end
-
+            
             local equipped = getEquippedPets()
             if #equipped > 0 then
                 for _, id in ipairs(equipped) do
@@ -189,24 +189,24 @@ for loadoutNum = 1, 3 do
                     task.wait()
                 end
             end
-
+            
             local location = getPetEquipLocation()
             local petIds = parseFromFile()
-
+            
             if #petIds == 0 then
                 beastHubNotify("Loadout "..loadoutNum.." is empty", "", 2)
                 return
             end
-
+            
             for _, id in ipairs(petIds) do
                 game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("PetsService"):FireServer("EquipPet", id, location)
                 task.wait()
             end
-
+            
             beastHubNotify("Loaded Loadout "..loadoutNum, "", 2)
         end
     })
-
+    
     if loadoutNum < 3 then Custom:CreateDivider() end
 end
 
@@ -1045,13 +1045,21 @@ local sealsLoady
 local Paragraph_selectedPets = PetEggs:CreateParagraph({Title = "Auto Sell Pets:", Content = "No pets selected."})
 local Dropdown_sealsLoadoutNum = PetEggs:CreateDropdown({
     Name = "Select 'Seals' loadout",
-    Options = {"None", "1", "2", "3","4","5","6", "custom_1", "custom_2", "custom_3"},
+    Options = {"None", "1", "2", "3","4","5","6", "Custom 1", "Custom 2", "Custom 3"},
     CurrentOption = {},
     MultipleOptions = false,
-    Flag = "sealsLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+    Flag = "sealsLoadoutNum",
     Callback = function(Options)
-        --if not Options or not Options[1] then return end
-        sealsLoady = tonumber(Options[1])
+        local selectedLoadout = Options[1]
+        if selectedLoadout == "Custom 1" then
+            sealsLoady = "custom_1"
+        elseif selectedLoadout == "Custom 2" then
+            sealsLoady = "custom_2"
+        elseif selectedLoadout == "Custom 3" then
+            sealsLoady = "custom_3"
+        else
+            sealsLoady = tonumber(selectedLoadout)
+        end
     end,
 })
 local suggestedAutoSellList = {
@@ -1171,8 +1179,8 @@ PetEggs:CreateButton({
         --print(tostring(sellBelow))
         if sealsLoady and sealsLoady ~= "None" then
             print("Switching to seals loadout first")
-            myFunctions.switchToLoadout(sealsLoady)
-                        beastHubNotify("Waiting for Seals to load", "Auto Sell", "5")
+            loadLoadout(sealsLoady)
+            beastHubNotify("Waiting for Seals to load", "Auto Sell", "5")
             task.wait(6)
         end
         autoSellPets(selectedPetsForAutoSell, sellBelow)
@@ -1180,6 +1188,66 @@ PetEggs:CreateButton({
     end,
 })
 PetEggs:CreateDivider()
+
+-- Helper function to load loadouts (both custom and numeric)
+local function loadLoadout(loadoutName)
+    if not loadoutName or loadoutName == "None" then return end
+    
+    if loadoutName == "custom_1" or loadoutName == "custom_2" or loadoutName == "custom_3" then
+        -- Load custom loadout
+        local function getPetEquipLocation()
+            local localPlayer = game.Players.LocalPlayer
+            local farmsFolder = game.Workspace:WaitForChild("Farm")
+            for _, farm in pairs(farmsFolder:GetChildren()) do
+                local ownerValue = farm:FindFirstChild("Important") and farm.Important:FindFirstChild("Data") and farm.Important.Data:FindFirstChild("Owner")
+                if ownerValue and ownerValue.Value == localPlayer.Name then
+                    local spawnPoint = farm:FindFirstChild("Spawn_Point")
+                    if spawnPoint and spawnPoint:IsA("BasePart") then
+                        return spawnPoint.CFrame * CFrame.new(0, 0, -5)
+                    end
+                end
+            end
+            return nil
+        end
+        
+        local function parseCustomFile(filename)
+            local ids = {}
+            local ok, content = pcall(function() return readfile("BeastHub/"..filename..".txt") end)
+            if not ok then return ids end
+            for line in string.gmatch(content, "([^\n]+)") do
+                local id = string.match(line, "({[%w%-]+})")
+                if id then table.insert(ids, id) end
+            end
+            return ids
+        end
+        
+        local function getEquippedPets()
+            local playerData = require(game:GetService("ReplicatedStorage").Modules.DataService):GetData()
+            return playerData and playerData.PetsData and playerData.PetsData.EquippedPets or {}
+        end
+        
+        local equipped = getEquippedPets()
+        if #equipped > 0 then
+            for _, id in ipairs(equipped) do
+                game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("PetsService"):FireServer("UnequipPet", id)
+                task.wait()
+            end
+        end
+        
+        local location = getPetEquipLocation()
+        local petIds = parseCustomFile(loadoutName)
+        
+        if #petIds > 0 then
+            for _, id in ipairs(petIds) do
+                game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("PetsService"):FireServer("EquipPet", id, location)
+                task.wait()
+            end
+        end
+    else
+        -- Load numeric loadout
+        myFunctions.switchToLoadout(loadoutName)
+    end
+end
 
 --Pet/Eggs>SMART HATCHING
 PetEggs:CreateSection("SMART Auto Hatching")
@@ -1198,35 +1266,60 @@ local sessionHatchCount = 0
 
 PetEggs:CreateDropdown({
     Name = "Incubating/Eagles Loadout",
-    Options = {"None", "1", "2", "3","4","5","6", "custom_1", "custom_2", "custom_3"},
+    Options = {"None", "1", "2", "3","4","5","6", "Custom 1", "Custom 2", "Custom 3"},
     CurrentOption = {},
     MultipleOptions = false,
-    Flag = "incubatingLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+    Flag = "incubatingLoadoutNum",
     Callback = function(Options)
-        --if not Options or not Options[1] then return end
-        incubatingLoady = tonumber(Options[1])
+        local selectedLoadout = Options[1]
+        if selectedLoadout == "Custom 1" then
+            incubatingLoady = "custom_1"
+        elseif selectedLoadout == "Custom 2" then
+            incubatingLoady = "custom_2"
+        elseif selectedLoadout == "Custom 3" then
+            incubatingLoady = "custom_3"
+        else
+            incubatingLoady = tonumber(selectedLoadout)
+        end
     end,
 })
 PetEggs:CreateDropdown({
     Name = "Koi Loadout",
-    Options = {"None", "1", "2", "3","4","5","6", "custom_1", "custom_2", "custom_3"},
+    Options = {"None", "1", "2", "3","4","5","6", "Custom 1", "Custom 2", "Custom 3"},
     CurrentOption = {},
     MultipleOptions = false,
-    Flag = "koiLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+    Flag = "koiLoadoutNum",
     Callback = function(Options)
-        --if not Options or not Options[1] then return end
-        koiLoady = tonumber(Options[1])
+        local selectedLoadout = Options[1]
+        if selectedLoadout == "Custom 1" then
+            koiLoady = "custom_1"
+        elseif selectedLoadout == "Custom 2" then
+            koiLoady = "custom_2"
+        elseif selectedLoadout == "Custom 3" then
+            koiLoady = "custom_3"
+        else
+            koiLoady = tonumber(selectedLoadout)
+        end
     end,
 })
 local autoBrontoAntiHatch = false
 PetEggs:CreateDropdown({
     Name = "Bronto Loadout",
-    Options = {"None", "1", "2", "3", "4", "5", "6", "custom_1", "custom_2", "custom_3"},
+    Options = {"None", "1", "2", "3", "4", "5", "6", "Custom 1", "Custom 2", "Custom 3"},
     CurrentOption = {},
     MultipleOptions = false,
     Flag = "brontoLoadoutNum",
     Callback = function(Options)
-        brontoLoady = tonumber(Options[1])
+        local selectedLoadout = Options[1]
+        if selectedLoadout == "Custom 1" then
+            brontoLoady = "custom_1"
+        elseif selectedLoadout == "Custom 2" then
+            brontoLoady = "custom_2"
+        elseif selectedLoadout == "Custom 3" then
+            brontoLoady = "custom_3"
+        else
+            brontoLoady = tonumber(selectedLoadout)
+        end
     end,
 })
 
@@ -1396,7 +1489,7 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                         --all eggs now must start with koi loadout, infinite loadout has been patched 10/24/25
                         beastHubNotify("Switching to Kois", "", 8)
                         Toggle_autoPlaceEggs:Set(false)
-                        myFunctions.switchToLoadout(koiLoady)
+                        loadLoadout(koiLoady)
                         task.wait(12)
 
                         --get egg data such as pet name and size
@@ -1495,7 +1588,7 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                         elseif isInAntiHatchList(petName) then
                                                             if autoBrontoAntiHatch and brontoLoady and brontoLoady ~= "None" then
                                                                 beastHubNotify("Switching to Bronto Loadout", "Anti-Hatch Pet: "..petName, 8)
-                                                                myFunctions.switchToLoadout(brontoLoady)
+                                                                loadLoadout(brontoLoady)
                                                                 task.wait(10)
                                                                 local args = {
                                                                     [1] = "HatchPet";
@@ -1504,7 +1597,7 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                                 game:GetService("ReplicatedStorage"):WaitForChild("GameEvents", 9e9):WaitForChild("PetEggService", 9e9):FireServer(unpack(args))
                                                                 sessionHatchCount = sessionHatchCount + 1
                                                                 task.wait(0.5)
-                                                                myFunctions.switchToLoadout(koiLoady)
+                                                                loadLoadout(koiLoady)
                                                                 task.wait(10)
                                                             else
                                                                 beastHubNotify("Skipping Anti-Hatch Pet!", petName.." = "..stringKG.."KG", 3)
@@ -5208,3 +5301,96 @@ Event:CreateButton({
                     local ReplicatedStorage = game:GetService("ReplicatedStorage")
                     local function getPlayerData()
                         return require(ReplicatedStorage.Modules.DataService):GetData()
+                    end
+                    local PetRegistry = require(ReplicatedStorage.Data.PetRegistry.PetList)
+                    local petDefaultHunger = {}
+                    for petName, data in pairs(PetRegistry) do
+                        if type(data) == "table" and data.DefaultHunger then
+                            petDefaultHunger[petName] = data.DefaultHunger
+                        end
+                    end
+
+                    while autoPetFeedEnabled do
+                        local petList = dropdown_selectPetsForFeed.CurrentOption or {}
+                        local fruitList = dropdown_selectedFruitForAutoFeed.CurrentOption or {}
+                        local hungerLimit = tonumber(input_autoFeedPercentage.CurrentValue) or 25
+                        local targetHunger = tonumber(input_autoFeedUntilPercentage.CurrentValue) or 100
+
+                        if #petList > 0 and #fruitList > 0 then
+                            local playerData = getPlayerData()
+                            for _, pet in ipairs(petList) do
+                                local petId = (pet:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
+                                local pData = playerData.PetsData.PetInventory.Data[petId]
+                                if pData then
+                                    local defHunger = petDefaultHunger[pData.PetType]
+                                    if defHunger then
+                                        local hungerPct = (pData.PetData.Hunger / defHunger) * 100
+                                        if hungerPct <= hungerLimit then
+                                            while hungerPct < targetHunger and autoPetFeedEnabled do
+                                                local fruitUid = nil
+                                                for uid, item in pairs(playerData.InventoryData) do
+                                                    if item.ItemType == "Holdable" and table.find(fruitList, item.ItemData.ItemName) then
+                                                        fruitUid = uid
+                                                        break
+                                                    end
+                                                end
+                                                if fruitUid then
+                                                    ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
+                                                    task.wait(0.2)
+                                                    playerData = getPlayerData()
+                                                    pData = playerData.PetsData.PetInventory.Data[petId]
+                                                    hungerPct = (pData.PetData.Hunger / defHunger) * 100
+                                                else
+                                                    break
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        task.wait(2)
+                    end
+                    autoPetFeedThread = nil
+                end)
+            end
+        end,
+    })
+
+    Automation:CreateDivider()
+
+    -- CUSTOM
+
+    -- END
+
+    local function antiAFK()
+    -- Prevent multiple connections
+    if getgenv().AntiAFKConnection then
+        getgenv().AntiAFKConnection:Disconnect()
+        print("♻️ Previous Anti-AFK connection disconnected")
+    end
+
+    local vu = game:GetService("VirtualUser")
+    getgenv().AntiAFKConnection = game:GetService("Players").LocalPlayer.Idled:Connect(function()
+        vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        -- print("🌀 AFK protection triggered – simulated activity sent")
+    end)
+
+    print("✅ Anti-AFK enabled")
+end
+antiAFK()
+
+-- LOAD CONFIG / must be the last part of everything 
+local success, err = pcall(function()
+    Rayfield:LoadConfiguration() -- Load config
+    local playerNameWebhook = game.Players.LocalPlayer.Name
+    local url = "https://discord.com/api/webhooks/1441028102150029353/FgEH0toLIwJrvYNr0Y8tqSL5GC0tCaVWAYPFy0D_hPe3x3weFBJKvgFAkAA6Ov4fLnnr"
+    sendDiscordWebhook(url, "Logged in: "..playerNameWebhook)
+end)
+if success then
+    print("Config file loaded")
+else
+    print("Error loading config file "..err)
+end
