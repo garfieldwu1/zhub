@@ -1286,8 +1286,10 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                     if petName and stringKG and smartAutoHatchingEnabled then
                                                         -- Trim whitespace in case it grew from previous runs
                                                         stringKG = stringKG:match("^%s*(.-)%s*$") 
+                                                        local currentNumberKG = tonumber(stringKG)
+                                                        local isRare = false
+                                                        local isHuge = false
                                                         local playerNameWebhook = game.Players.LocalPlayer.Name
-                                                        --print("stringKG trimmed: "..stringKG)
 
                                                         -- check if Rare
                                                         if type(rarePets) == "table" then
@@ -1297,31 +1299,24 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                                     break
                                                                 end
                                                             end
-                                                        else
-                                                            --exit if have trouble getting rare pets
-                                                            warn("rarePets is not a table")
-                                                            return
                                                         end
 
                                                         -- check if Huge
-                                                        local currentNumberKG = tonumber(stringKG)
-                                                        if not currentNumberKG then
-                                                            warn("Error in getting pet Size")
-                                                            return
-                                                        end
-                                                        if currentNumberKG < 3 then
-                                                            isHuge = false
-                                                        else
-                                                            isHuge = true
+                                                        if currentNumberKG then
+                                                            if currentNumberKG >= 3 then
+                                                                isHuge = true
+                                                            end
                                                         end
 
-                                                        --deciding loadout code below
-                                                        if isRare or isHuge then
+                                                        local isInAntiHatch = isInAntiHatchList(petName)
+                                                        local isSkipKG = (skipHatchAboveKG > 0 and currentNumberKG and currentNumberKG >= skipHatchAboveKG)
+
+                                                        if (isRare or isHuge) and not (isInAntiHatch or isSkipKG) then
                                                             rareOrHugeFound = true
                                                             Toggle_autoPlaceEggs:Set(false)
                                                         end
 
-                                                        if isHuge then
+                                                        if isHuge and not isSkipKG and not isInAntiHatch then
                                                             beastHubNotify("Skipping Huge!", "", 2)
                                                             local targetHuge = petName..stringKG
                                                             print("targetHuge")
