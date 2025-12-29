@@ -759,7 +759,6 @@ local Dropdown_eggPosition = PetEggs:CreateDropdown({
         getgenv().selectedEggPosition = Options[1]
     end,
 })
---toggle auto place eggs
 local autoPlaceEggsThread -- store the task
 local autoPlaceEggsEnabled = false
 local Toggle_autoPlaceEggs = PetEggs:CreateToggle({
@@ -796,15 +795,18 @@ local Toggle_autoPlaceEggs = PetEggs:CreateToggle({
 
                             local args = { "CreateEgg", location }
                             game:GetService("ReplicatedStorage").GameEvents.PetEggService:FireServer(unpack(args))
-                            --add algo here to trap 'too close to another egg and dont increment'
-                            task.wait(0.1)
-                            if tooCloseFlag then
-                                tooCloseFlag = false -- reset flag for next iteration
-                                -- skip increment
-                            else
-                                currentEggsInFarm = currentEggsInFarm + 1
-                            end
                             
+                            -- Wait for server to process, then verify if placement succeeded
+                            task.wait(0.1)  -- Adjust this delay if needed (0.2-0.5s is usually enough for server response)
+                            local newEggCount = getFarmEggCount()
+                            if newEggCount > currentEggsInFarm then
+                                -- Placement succeeded: update the count
+                                currentEggsInFarm = newEggCount
+                            else
+                                -- Placement failed (e.g., "Too Close"): skip increment and try next location
+                                -- Optional: Add debug print here if you want to log failures
+                                -- print("Placement failed at location:", location, " - Too Close or other error")
+                            end
                         end
                     end
 
