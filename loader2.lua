@@ -73,8 +73,7 @@ end
 local mainModule = loadstring(game:HttpGet("https://pastebin.com/raw/K4yBnmbf"))()
 mainModule.init(Rayfield, beastHubNotify, Window, myFunctions, reloadScript, beastHubIcon)
 
-
-
+do
 local Shops = Window:CreateTab("Shops", "circle-dollar-sign")
 local Pets = Window:CreateTab("Pets", "cat")
 local PetEggs = Window:CreateTab("Eggs", "egg")
@@ -5297,8 +5296,9 @@ Event:CreateButton({
     -- CUSTOM
 
     -- END
+end
 
-    local function antiAFK()
+local function antiAFK()
     -- Prevent multiple connections
     if getgenv().AntiAFKConnection then
         getgenv().AntiAFKConnection:Disconnect()
