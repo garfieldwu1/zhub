@@ -1088,6 +1088,7 @@ PetEggs:CreateDropdown({
         koiLoady = tonumber(Options[1])
     end,
 })
+
 local skipHatchAboveKG = 0
 PetEggs:CreateDropdown({
     Name = "Skip hatch Above KG (any egg):",
@@ -1315,44 +1316,12 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                         end
 
                                                         --deciding loadout code below
-                                                        --if isHuge or isRare, swatch loadout bronto, wait 7 sec, hatch this 1 egg
                                                         if isRare or isHuge then
                                                             rareOrHugeFound = true
                                                             Toggle_autoPlaceEggs:Set(false)
                                                         end
 
-                                                        local args = {
-                                                            [1] = "HatchPet";
-                                                            [2] = egg
-                                                        }
-                                                            game:GetService("ReplicatedStorage"):WaitForChild("GameEvents", 9e9):WaitForChild("PetEggService", 9e9):FireServer(unpack(args))
-                                                            sessionHatchCount = sessionHatchCount + 1
-                                                            task.wait(0.5)
-
-                                                            -- Webhook for Huge/Rare inside Bronto logic
-                                                            local playerNameWebhook = game.Players.LocalPlayer.Name
-                                                            local message = nil
-                                                            if isRare and webhookRares then
-                                                                message = "[BeastHub] "..playerNameWebhook.." | Rare hatched: " .. tostring(petName) .. "=" .. tostring(currentNumberKG) .. "KG |Egg hatch # "..tostring(sessionHatchCount)
-                                                            elseif isHuge and webhookHuge then
-                                                                message = "[BeastHub] "..playerNameWebhook.." | Huge hatched: " .. tostring(petName) .. "=" .. tostring(currentNumberKG) .. "KG |Egg hatch # "..tostring(sessionHatchCount)
-                                                            end
-                                                            if message and webhookURL and webhookURL ~= "" then
-                                                                sendDiscordWebhook(webhookURL, message)
-                                                            end
-
-                                                            myFunctions.switchToLoadout(koiLoady)
-                                                            task.wait(10)
-
-                                                            -- If it was a Huge, we still want to log it to the session list to prevent duplicate webhooks if the logic falls through
-                                                            if isHuge then
-                                                                local targetHuge = petName..stringKG
-                                                                if notInHugeList(sessionHugeList, targetHuge) then
-                                                                    table.insert(sessionHugeList, targetHuge)
-                                                                end
-                                                            end
-
-                                                        elseif isHuge then
+                                                        if isHuge then
                                                             beastHubNotify("Skipping Huge!", "", 2)
                                                             local targetHuge = petName..stringKG
                                                             print("targetHuge")
@@ -4726,37 +4695,7 @@ Event:CreateButton({
                             end
                         end
 
-                        if anyReady then
-                            beastHubNotify("All Eggs Ready!", "Switching to Koi Loadout", 3)
-                            myFunctions.switchToLoadout(koiLoady)
-                            task.wait(6)
-
-                            -- Place remaining eggs if any
-                            local eggToPlace = Dropdown_eggToPlace.CurrentOption[1]
-                            local maxEggs = eggsToPlaceInput or 13
-                            local currentEggs = getFarmEggCount()
-                            local eggsNeeded = maxEggs - currentEggs
-
-                            if eggsNeeded > 0 and eggToPlace and eggToPlace ~= "None" then
-                                beastHubNotify("Placing remaining eggs", "", 3)
-                                local placedThisRound = 0
-                                for i = 1, #eggPositionPresets[SelectedPreset] do
-                                    if placedThisRound >= eggsNeeded or not cancelAnimationEnabled then break end
-                                    
-                                    local pos = getFarmSpawnCFrame() * CFrame.new(eggPositionPresets[SelectedPreset][i])
-                                    local args = {
-                                        [1] = eggToPlace,
-                                        [2] = pos
-                                    }
-                                    game:GetService("ReplicatedStorage").GameEvents.PlacePetEgg:FireServer(unpack(args))
-                                    task.wait(0.1)
-                                    placedThisRound = placedThisRound + 1
-                                end
-                            end
-                            
-                            -- Wait a bit before continuing or until eggs are no longer ready (hatched)
-                            task.wait(5)
-                        else
+                        if not anyReady then
                             pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
                             for _, pickupEntry in ipairs(pickupList) do
                                 if not cancelAnimationEnabled then break end
