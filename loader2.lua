@@ -1089,26 +1089,17 @@ PetEggs:CreateDropdown({
         koiLoady = tonumber(Options[1])
     end,
 })
-local autoBrontoAntiHatch = false
-PetEggs:CreateDropdown({
-    Name = "Bronto Loadout",
-    Options = {"None", "1", "2", "3", "4", "5", "6"},
-    CurrentOption = {},
-    MultipleOptions = false,
-    Flag = "brontoLoadoutNum",
-    Callback = function(Options)
-        brontoLoady = tonumber(Options[1])
-    end,
-})
-
-PetEggs:CreateToggle({
-    Name = "Auto Bronto Anti Hatch List",
-    CurrentValue = false,
-    Flag = "autoBrontoAntiHatch",
-    Callback = function(Value)
-        autoBrontoAntiHatch = Value
-    end,
-})
+-- PetEggs:CreateDropdown({
+--     Name = "Bronto Loadout",
+--     Options = {"None", "1", "2", "3"},
+--     CurrentOption = {},
+--     MultipleOptions = false,
+--     Flag = "brontoLoadoutNum", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+--     Callback = function(Options)
+--         --if not Options or not Options[1] then return end
+--         brontoLoady = tonumber(Options[1])
+--     end,
+-- })
 local skipHatchAboveKG = 0
 PetEggs:CreateDropdown({
     Name = "Skip hatch Above KG (any egg):",
@@ -1264,47 +1255,11 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                         local PetEggService = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("PetEggService")
 
 
-                        -- Check if any egg needs Bronto BEFORE switching to Koi
-                        local brontoNeededOverall = false
-                        if autoBrontoAntiHatch and brontoLoady and brontoLoady ~= "None" then
-                            for _, egg in pairs(myPetEggs) do
-                                if egg:IsA("Model") then
-                                    local espFolder = egg:FindFirstChild("BhubESP")
-                                    if espFolder then
-                                        local billboard = espFolder:FindFirstChild("EggBillboard")
-                                        if billboard then
-                                            local textLabel = billboard:FindFirstChildWhichIsA("TextLabel")
-                                            if textLabel then
-                                                local text = textLabel.Text
-                                                local petName = text:match('rgb%(%s*0,%s*255,%s*0%s*%)">(.-)</font>%s*=')
-                                                local stringKG = text:match("= (%d+%.?%d*)")
-                                                local currentNumberKG = tonumber(stringKG)
-                                                
-                                                if petName and currentNumberKG then
-                                                    local isHuge = currentNumberKG >= 3
-                                                    if isHuge or (skipHatchAboveKG > 0 and currentNumberKG >= skipHatchAboveKG) or isInAntiHatchList(petName) then
-                                                        brontoNeededOverall = true
-                                                        break
-                                                    end
-                                                end
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end
-
-                        if brontoNeededOverall then
-                            beastHubNotify("Switching to Bronto Loadout First", "Priority pet detected", 8)
-                            Toggle_autoPlaceEggs:Set(false)
-                            myFunctions.switchToLoadout(brontoLoady)
-                            task.wait(12)
-                        else
-                            beastHubNotify("Switching to Kois", "", 8)
-                            Toggle_autoPlaceEggs:Set(false)
-                            myFunctions.switchToLoadout(koiLoady)
-                            task.wait(12)
-                        end
+                        --all eggs now must start with koi loadout, infinite loadout has been patched 10/24/25
+                        beastHubNotify("Switching to Kois", "", 8)
+                        Toggle_autoPlaceEggs:Set(false)
+                        myFunctions.switchToLoadout(koiLoady)
+                        task.wait(12)
 
                         --get egg data such as pet name and size
                         --=======================================
@@ -1379,53 +1334,7 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                             Toggle_autoPlaceEggs:Set(false)
                                                         end
 
-                                                        local shouldBronto = false
-                                                        if autoBrontoAntiHatch and brontoLoady and brontoLoady ~= "None" then
-                                                            if isHuge then
-                                                                shouldBronto = true
-                                                            elseif skipHatchAboveKG > 0 and currentNumberKG >= skipHatchAboveKG then
-                                                                shouldBronto = true
-                                                            elseif isInAntiHatchList(petName) then
-                                                                shouldBronto = true
-                                                            end
-                                                        end
-
-                                                        if shouldBronto then
-                                                            beastHubNotify("Switching to Bronto Loadout", "Priority Pet/Size: "..petName, 8)
-                                                            myFunctions.switchToLoadout(brontoLoady)
-                                                            task.wait(10)
-                                                            local args = {
-                                                                [1] = "HatchPet";
-                                                                [2] = egg
-                                                            }
-                                                            game:GetService("ReplicatedStorage"):WaitForChild("GameEvents", 9e9):WaitForChild("PetEggService", 9e9):FireServer(unpack(args))
-                                                            sessionHatchCount = sessionHatchCount + 1
-                                                            task.wait(0.5)
-
-                                                            -- Webhook for Huge/Rare inside Bronto logic
-                                                            local playerNameWebhook = game.Players.LocalPlayer.Name
-                                                            local message = nil
-                                                            if isRare and webhookRares then
-                                                                message = "[BeastHub] "..playerNameWebhook.." | Rare hatched: " .. tostring(petName) .. "=" .. tostring(currentNumberKG) .. "KG |Egg hatch # "..tostring(sessionHatchCount)
-                                                            elseif isHuge and webhookHuge then
-                                                                message = "[BeastHub] "..playerNameWebhook.." | Huge hatched: " .. tostring(petName) .. "=" .. tostring(currentNumberKG) .. "KG |Egg hatch # "..tostring(sessionHatchCount)
-                                                            end
-                                                            if message and webhookURL and webhookURL ~= "" then
-                                                                sendDiscordWebhook(webhookURL, message)
-                                                            end
-
-                                                            myFunctions.switchToLoadout(koiLoady)
-                                                            task.wait(10)
-
-                                                            -- If it was a Huge, we still want to log it to the session list to prevent duplicate webhooks if the logic falls through
-                                                            if isHuge then
-                                                                local targetHuge = petName..stringKG
-                                                                if notInHugeList(sessionHugeList, targetHuge) then
-                                                                    table.insert(sessionHugeList, targetHuge)
-                                                                end
-                                                            end
-
-                                                        elseif isHuge then
+                                                        if isHuge then
                                                             beastHubNotify("Skipping Huge!", "", 2)
                                                             local targetHuge = petName..stringKG
                                                             print("targetHuge")
@@ -4841,228 +4750,76 @@ Event:CreateButton({
     })
     Automation:CreateDivider()
 
-    --Auto Pet boost
     Automation:CreateSection("Auto Pet Boost")
-    -- --select pet
-    local parag_petsToBoost = Automation:CreateParagraph({
-        Title = "Pet/s to boost:",
-        Content = "None"
-    })
-    local dropdown_selectPetsForPetBoost = Automation:CreateDropdown({
+    local dropdown_selectPetsForBoost = Automation:CreateDropdown({
         Name = "Select Pet/s",
         Options = {},
         CurrentOption = {},
         MultipleOptions = true,
-        Flag = "selectPetsForPetBoost", 
-        Callback = function(Options)
-            local listText = table.concat(Options, ", ")
-            if listText == "" then
-                listText = "None"
-            end
-
-            parag_petsToBoost:Set({
-                Title = "Pet/s to boost:",
-                Content = listText
-            })
-        end,
-
+        Flag = "selectPetsForBoost", 
+        Callback = function(Options) end,
     })
-
     Automation:CreateButton({
         Name = "Refresh list",
         Callback = function()
             local function getPlayerData()
                 local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
-                local logs = dataService:GetData()
-                return logs
+                return dataService:GetData()
             end
-
             local function equippedPets()
                 local playerData = getPlayerData()
-                if not playerData.PetsData then
-                    warn("PetsData missing")
-                    return nil
-                end
-
-                local tempStorage = playerData.PetsData.EquippedPets
-                if not tempStorage or type(tempStorage) ~= "table" then
-                    warn("EquippedPets missing or invalid")
-                    return nil
-                end
-
-                local petIdsList = {}
-                for _, id in ipairs(tempStorage) do
-                    table.insert(petIdsList, id)
-                end
-
-                return petIdsList
+                if not playerData.PetsData then return nil end
+                return playerData.PetsData.EquippedPets
             end
-
             local function getPetNameUsingId(uid)
                 local playerData = getPlayerData()
                 if playerData.PetsData.PetInventory.Data then
-                    local data = playerData.PetsData.PetInventory.Data
-                    for id,petData in pairs(data) do
-                        if id == uid then
-                            return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
-                        end
+                    local petData = playerData.PetsData.PetInventory.Data[uid]
+                    if petData then
+                        return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
                     end
                 end
             end
-
             local equipped = equippedPets()
             local namesToId = {}
-            for _,id in ipairs(equipped) do
-                local petName = getPetNameUsingId(id)
-                table.insert(namesToId, petName.." | "..id)
+            if equipped then
+                for _,id in ipairs(equipped) do
+                    local petName = getPetNameUsingId(id)
+                    table.insert(namesToId, petName.." | "..id)
+                end
             end
-
-            if equipped and #equipped > 0 then
-                dropdown_selectPetsForPetBoost:Refresh(namesToId)
-            else
-                beastHubNotify("equipped pets error", "", 3)
-            end
-        end,
-    })
-
-    Automation:CreateButton({
-        Name = "Clear Selected",
-        Callback = function()
-            dropdown_selectPetsForPetBoost:Set({})
-            parag_petsToBoost:Set({
-                Title = "Pet/s to boost:",
-                Content = "None"
-            })
-        end,
-    })
-
-    -- --select toy
-    local dropdown_selectedToys = Automation:CreateDropdown({
-        Name = "Select Toy/s",
-        Options = {"Small Pet Toy", "Medium Pet Toy", "Large Pet Toy"},
-        CurrentOption = {},
-        MultipleOptions = true,
-        Flag = "selectToysForPetBoost", 
-        Callback = function(Options)
-        -- The function that takes place when the selected option is changed
-        -- The variable (Options) is a table of strings for the current selected options
+            dropdown_selectPetsForBoost:Refresh(namesToId)
         end,
     })
 
     local autoPetBoostEnabled = false
     local autoPetBoostThread = nil
     Automation:CreateToggle({
-        Name = "Auto Boost",
+        Name = "Auto Pet Boost",
         CurrentValue = false,
-        Flag = "autoBoost",
+        Flag = "autoPetBoost",
         Callback = function(Value)
             autoPetBoostEnabled = Value
-
             if autoPetBoostEnabled then
-                if autoPetBoostThread then
-                    return
-                end
+                if autoPetBoostThread then return end
                 beastHubNotify("Auto pet boost running", "", 3)
                 autoPetBoostThread = task.spawn(function()
-                    local function checkBoostTimeLeft(toyName, petId) 
-                        local toyToBoostAmount = {
-                            ["Small Pet Toy"] = 0.1,
-                            ["Medium Pet Toy"] = 0.2,
-                            ["Large Pet Toy"] = 0.3
-                        }
-
-                        local function getPlayerData()
-                            local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
-                            local logs = dataService:GetData()
-                            return logs
-                        end
-
-                        local playerData = getPlayerData()
-                        local petData = playerData.PetsData.PetInventory.Data
-                        for id, data in pairs(petData) do
-                            if tostring(id) == tostring(petId) then
-                                if data.PetData and data.PetData.Boosts then
-                                --have boost, check if matching
-                                    local boosts = data.PetData.Boosts
-                                    for _,boost in ipairs(boosts) do
-                                        local boostType = boost.BoostType
-                                        local boostAmount = boost.BoostAmount
-                                        local boostTime = boost.Time
-
-                                        if boostType == "PASSIVE_BOOST" then
-                                            if toyToBoostAmount[toyName] == boostAmount then
-                                                return boostTime
-                                            end
-                                        end
-                                    end
-                                    return 0
-                                else
-                                    return 0
-                                end
-                            end
-                        end
-                    end 
-
                     while autoPetBoostEnabled do
-                        local petList = dropdown_selectPetsForPetBoost and dropdown_selectPetsForPetBoost.CurrentOption or {}
-                        local toyList = dropdown_selectedToys and dropdown_selectedToys.CurrentOption or {}
-
-                        if #petList == 0 or #toyList == 0 then
-                            task.wait(1)
-                            continue
-                        end
-
-
+                        local petList = dropdown_selectPetsForBoost.CurrentOption or {}
                         for _, pet in ipairs(petList) do
-                            for _, toy in ipairs(toyList) do
-                                if not autoPetBoostEnabled then
-                                    break
-                                end
-
-                                local petId = (pet:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
-                                local toyName = toy
-
-                                --check if already boosted
-                                local timeLeft = checkBoostTimeLeft(toyName, petId)
-
-                                --boost only if good to boost
-                                -- beastHubNotify("timeLeft: "..tostring(timeLeft), "", "1")
-                                if timeLeft <= 0 then
-                                    -- print("inside if")
-                                    --equip boost
-                                    if equipItemByName(toyName) then
-                                        task.wait(.1)
-                                        --boost
-                                        local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                                        local PetBoostService = ReplicatedStorage.GameEvents.PetBoostService -- RemoteEvent 
-                                        PetBoostService:FireServer(
-                                            "ApplyBoost",
-                                            petId
-                                        )
-                                    else
-                                        -- print("not good to boost")
-                                    end
-
-                                end
-                                task.wait(0.2)
-                            end
-                            if not autoPetBoostEnabled then
-                                break
+                            local petId = (pet:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
+                            if petId ~= "" then
+                                game:GetService("ReplicatedStorage").GameEvents.ActivePetService:FireServer("Boost", petId)
+                                task.wait(0.1)
                             end
                         end
-
-                        task.wait(2)
+                        task.wait(1)
                     end
-
                     autoPetBoostThread = nil
                 end)
-            else
-                autoPetBoostEnabled = false
-                autoPetBoostThread = nil
             end
         end,
     })
-    Automation:CreateDivider()
 
     Automation:CreateSection("Auto Feed")
     local dropdown_selectPetsForFeed = Automation:CreateDropdown({
