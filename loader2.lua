@@ -1423,6 +1423,8 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                         --all eggs now must start with koi loadout, infinite loadout has been patched 10/24/25
                         beastHubNotify("Switching to Kois", "", 8)
                         Toggle_autoPlaceEggs:Set(false)
+                        -- Pause cancel animation before switching to koi loadout
+                        cancelAnimationPaused = true
                         myFunctions.switchToLoadout(koiLoady)
                         task.wait(12)
 
@@ -1630,7 +1632,9 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                         task.wait(2)
                         beastHubNotify("Back to incubating", "", 6)
                         Toggle_autoPlaceEggs:Set(true)
-                        --myFunctions.switchToLoadout(incubatingLoady) --loadout switch was done in the callback of auto sell 
+                        --myFunctions.switchToLoadout(incubatingLoady) --loadout switch was done in the callback of auto sell
+                        -- Resume cancel animation after switching back to eagles/incubating loadout
+                        cancelAnimationPaused = false
                         task.wait(6)
                     else
                         beastHubNotify("Eggs not ready yet", "Waiting..", 3)
@@ -4780,6 +4784,7 @@ Event:CreateButton({
     local cancelAnimationThread = nil
     local cooldownListenerCancelAnim = nil
     local petCooldownsCancelAnim = {}
+    local cancelAnimationPaused = false
 
     local function isPetInWorkspace(petId)
         local petsFolder = workspace:FindFirstChild("PetsPhysical")
@@ -4879,35 +4884,38 @@ Event:CreateButton({
                 local activeCancelTasks = {}
                 cancelAnimationThread = task.spawn(function()
                     while cancelAnimationEnabled do
-                        local anyReady = false
-                        local petEggsList = myFunctions.getMyFarmPetEggs()
-                        for _, egg in pairs(petEggsList) do
-                            if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
-                                anyReady = true
-                                break
+                        -- Skip execution when paused
+                        if not cancelAnimationPaused then
+                            local anyReady = false
+                            local petEggsList = myFunctions.getMyFarmPetEggs()
+                            for _, egg in pairs(petEggsList) do
+                                if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
+                                    anyReady = true
+                                    break
+                                end
                             end
-                        end
 
-                        if not anyReady then
-                            pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
-                            for _, pickupEntry in ipairs(pickupList) do
-                                if not cancelAnimationEnabled then break end
-                                local petId = (pickupEntry:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
-                                if not activeCancelTasks[petId] then
-                                    local timeLeft = petCooldownsCancelAnim[petId] or 0
-                                    if timeLeft == 0 and isEquipped(petId) then
-                                        activeCancelTasks[petId] = true
-                                        task.spawn(function()
-                                            task.wait(animDelay)
-                                            if cancelAnimationEnabled and isPetInWorkspace(petId) then
-                                                -- Cancel animation WITHOUT pickup animation as requested
-                                                game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("UnequipPet", petId)
-                                                task.wait(0.05)
-                                                -- equipPetByUuid(petId) -- REMOVED to avoid pickup animation as requested
-                                                game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("EquipPet", petId, location)
-                                            end
-                                            activeCancelTasks[petId] = nil
-                                        end)
+                            if not anyReady then
+                                pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
+                                for _, pickupEntry in ipairs(pickupList) do
+                                    if not cancelAnimationEnabled then break end
+                                    local petId = (pickupEntry:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
+                                    if not activeCancelTasks[petId] then
+                                        local timeLeft = petCooldownsCancelAnim[petId] or 0
+                                        if timeLeft == 0 and isEquipped(petId) then
+                                            activeCancelTasks[petId] = true
+                                            task.spawn(function()
+                                                task.wait(animDelay)
+                                                if cancelAnimationEnabled and not cancelAnimationPaused and isPetInWorkspace(petId) then
+                                                    -- Cancel animation WITHOUT pickup animation as requested
+                                                    game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("UnequipPet", petId)
+                                                    task.wait(0.05)
+                                                    -- equipPetByUuid(petId) -- REMOVED to avoid pickup animation as requested
+                                                    game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("EquipPet", petId, location)
+                                                end
+                                                activeCancelTasks[petId] = nil
+                                            end)
+                                        end
                                     end
                                 end
                             end
