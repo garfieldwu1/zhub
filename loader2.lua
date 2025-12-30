@@ -215,23 +215,14 @@ end
 -- ===Declarations
 local workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
---local TeleportService = game:GetService("TeleportService")
 local player = Players.LocalPlayer
-local placeId = game.PlaceId
-local character = player.Character
+local character = player.Character or player.CharacterAdded:Wait()
 local Humanoid = character:WaitForChild("Humanoid")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
-
-
-
-
-
-
 -- Safe Reload button
 local function reloadScript(message)
-    -- Reset flags first so main script can run again
     getgenv().BeastHubLoaded = false
     getgenv().BeastHubRayfield = nil
 
