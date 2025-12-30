@@ -82,6 +82,9 @@ local Custom = Window:CreateTab("Custom", "sparkles")
 local Misc = Window:CreateTab("Misc", "code")
 local Event = Window:CreateTab("Event", "gift")
 
+-- Shared variables for cancel animation control
+local cancelAnimationPaused = false
+
 -- ===CUSTOM PET LOADOUTS===
 Custom:CreateSection("Pet Team Loadouts", true)
 local customLoadout1 = Custom:CreateParagraph({Title = "Loadout 1", Content = "Empty"})
@@ -4784,7 +4787,6 @@ Event:CreateButton({
     local cancelAnimationThread = nil
     local cooldownListenerCancelAnim = nil
     local petCooldownsCancelAnim = {}
-    local cancelAnimationPaused = false
 
     local function isPetInWorkspace(petId)
         local petsFolder = workspace:FindFirstChild("PetsPhysical")
