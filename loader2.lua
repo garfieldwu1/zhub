@@ -47,7 +47,7 @@ local luckGUI = myFunctions.createLuckGUI()
 
 -- ================== MAIN ==================
 local Window = Rayfield:CreateWindow({
-   Name = "BeastHub",
+   Name = "BeastHub | Modified By Markdevs",
    Icon = beastHubIcon, --BeastHub logo
    LoadingTitle = "BeastHub",
    LoadingSubtitle = "by Team Forgotten",
