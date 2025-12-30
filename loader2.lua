@@ -4877,6 +4877,65 @@ Event:CreateButton({
 
                 -- Main auto pickup thread
                 local activeCancelTasks = {}
+                local loadoutSwitchInProgress = false
+                
+                local function switchToLoadout(loadoutNum)
+                    local function getPetEquipLocation()
+                        local ok, result = pcall(function()
+                            local spawnCFrame = (function()
+                                local localPlayer = game.Players.LocalPlayer
+                                local farmsFolder = game.Workspace:WaitForChild("Farm")
+                                for _, farm in pairs(farmsFolder:GetChildren()) do
+                                    local ownerValue = farm:FindFirstChild("Important") and farm.Important:FindFirstChild("Data") and farm.Important.Data:FindFirstChild("Owner")
+                                    if ownerValue and ownerValue.Value == localPlayer.Name then
+                                        local spawnPoint = farm:FindFirstChild("Spawn_Point")
+                                        return spawnPoint and spawnPoint:IsA("BasePart") and spawnPoint.CFrame or nil
+                                    end
+                                end
+                                return nil
+                            end)()
+                            if typeof(spawnCFrame) ~= "CFrame" then return nil end
+                            return spawnCFrame * CFrame.new(0, 0, -5)
+                        end)
+                        return ok and result or nil
+                    end
+
+                    local function parseFromFile()
+                        local ids = {}
+                        local ok, content = pcall(function() return readfile("BeastHub/custom_"..loadoutNum..".txt") end)
+                        if not ok then return ids end
+                        for line in string.gmatch(content, "([^\n]+)") do
+                            local id = string.match(line, "({[%w%-]+})")
+                            if id then table.insert(ids, id) end
+                        end
+                        return ids
+                    end
+
+                    local function getEquippedPets()
+                        local playerData = require(game:GetService("ReplicatedStorage").Modules.DataService):GetData()
+                        if not playerData.PetsData then return {} end
+                        return playerData.PetsData.EquippedPets or {}
+                    end
+
+                    local equipped = getEquippedPets()
+                    if #equipped > 0 then
+                        for _, id in ipairs(equipped) do
+                            game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("PetsService"):FireServer("UnequipPet", id)
+                            task.wait(0.1)
+                        end
+                    end
+
+                    local loadoutLocation = getPetEquipLocation()
+                    local petIds = parseFromFile()
+
+                    if #petIds > 0 then
+                        for _, id in ipairs(petIds) do
+                            game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("PetsService"):FireServer("EquipPet", id, loadoutLocation)
+                            task.wait(0.1)
+                        end
+                    end
+                end
+                
                 cancelAnimationThread = task.spawn(function()
                     while cancelAnimationEnabled do
                         local anyReady = false
@@ -4888,7 +4947,21 @@ Event:CreateButton({
                             end
                         end
 
-                        if not anyReady then
+                        if anyReady and not loadoutSwitchInProgress then
+                            -- All eggs ready: switch to koi+seal loadout to place eggs
+                            loadoutSwitchInProgress = true
+                            beastHubNotify("All eggs ready! Switching to Koi+Seal loadout", "", 2)
+                            switchToLoadout(2) -- Loadout 2 assumed to be koi+seal
+                            task.wait(0.5)
+                            -- Eggs will be placed automatically
+                            task.wait(2)
+                            -- Switch back to eagles loadout
+                            beastHubNotify("Switching back to Eagles loadout", "", 2)
+                            switchToLoadout(1) -- Loadout 1 assumed to be eagles
+                            task.wait(0.5)
+                            loadoutSwitchInProgress = false
+                            -- Continue cancel animation, ignore "left eggs ready" from AntiHatchPets
+                        elseif not anyReady and not loadoutSwitchInProgress then
                             pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
                             for _, pickupEntry in ipairs(pickupList) do
                                 if not cancelAnimationEnabled then break end
