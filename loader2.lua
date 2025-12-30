@@ -1,5 +1,5 @@
 -- security checks (cleaned)
---local username = game.Players.LocalPlayer.Name
+local username = game.Players.LocalPlayer.Name
 
 -- Removed:
 -- expectedURL
@@ -34,7 +34,7 @@ if getgenv().BeastHubLoaded then
 end
 
 getgenv().BeastHubLoaded = true
---getgenv().BeastHubLink = "https://pastebin.com/raw/GjsWnygW"
+getgenv().BeastHubLink = "https://pastebin.com/raw/GjsWnygW"
 
 
 -- Load my reusable functions
@@ -245,10 +245,10 @@ local function reloadScript(message)
     end
 
     -- Reload main script from Pastebin
- --   if getgenv().BeastHubLink then
-     --   local ok, err = pcall(function()
-     --       loadstring(game:HttpGet(getgenv().BeastHubLink))()
-     --   end)
+    if getgenv().BeastHubLink then
+        local ok, err = pcall(function()
+            loadstring(game:HttpGet(getgenv().BeastHubLink))()
+        end)
         if ok then
             Rayfield = getgenv().BeastHubRayfield
             Rayfield:Notify({
@@ -4157,7 +4157,7 @@ local Toggle_bhubESP = PetEggs:CreateToggle({
                             label.BackgroundTransparency = 1
                             label.Size = UDim2.new(1, 0, 1, 0)
                             if isHuge then
-                                label.Text = '<font color="rgb(255,0,0)"><b>Paldooo! (' .. petKG .. 'kg)</b></font>\n<font color="rgb(0,255,0)">' .. petName .. '</font>'
+                                label.Text = '<font color="rgb(255,0,0)"><b>PALDO!</b></font>\n<font color="rgb(0,255,0)">' .. petName .. '</font> = ' .. petKG .. 'kg'
 
                             else
                                 label.Text = '<font color="rgb(0,255,0)">' .. petName .. '</font> = ' .. petKG .. 'kg'
