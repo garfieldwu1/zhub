@@ -4892,7 +4892,7 @@ Event:CreateButton({
                             local petEggsList = myFunctions.getMyFarmPetEggs()
                             for _, egg in pairs(petEggsList) do
                                 if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
-                                    anyReady = true
+                                    anyReady = false
                                     break
                                 end
                             end
