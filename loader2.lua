@@ -1,11 +1,5 @@
 -- security checks (cleaned)
-local Players = game:GetService("Players")
-local localPlayer = Players.LocalPlayer
-if not localPlayer then
-    Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
-    localPlayer = Players.LocalPlayer
-end
-local username = localPlayer.Name
+local username = game.Players.LocalPlayer.Name
 
 -- Removed:
 -- expectedURL
@@ -22,7 +16,7 @@ if not getgenv().BeastHubRayfield then
     getgenv().BeastHubRayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 end
 local Rayfield = getgenv().BeastHubRayfield
-local beastHubIcon = "rbxassetid://88823002331312"
+local beastHubIcon = 88823002331312
 
 -- Prevent multiple Rayfield instances
 if getgenv().BeastHubLoaded then
@@ -35,6 +29,573 @@ if getgenv().BeastHubLoaded then
         })
     else
         warn("BeastHub is already running!")
+    end    
+    return
+end
+
+getgenv().BeastHubLoaded = true
+getgenv().BeastHubLink = "https://pastebin.com/raw/GjsWnygW"
+
+
+-- Load my reusable functions
+if not getgenv().BeastHubFunctions then
+    getgenv().BeastHubFunctions = loadstring(game:HttpGet("https://pastebin.com/raw/wEUUnKuv"))()
+end
+local myFunctions = getgenv().BeastHubFunctions
+-- Create Luck GUI for playtime luck
+local luckGUI = myFunctions.createLuckGUI()
+
+-- ================== MAIN ==================
+local Window = Rayfield:CreateWindow({
+   Name = "BeastHub",
+   Icon = beastHubIcon, --BeastHub logo
+   LoadingTitle = "BeastHub",
+   LoadingSubtitle = "by Team Forgotten",
+   ShowText = "Rayfield",
+   Theme = "Default",
+   ToggleUIKeybind = false,
+  -- ToggleUIKeybind = "H",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "BeastHub",
+      FileName = "userConfig"
+   }
+})
+
+local function beastHubNotify(title, message, duration)
+    Rayfield:Notify({
+        Title = title,
+        Content = message,
+        Duration = duration,
+        Image = beastHubIcon
+    })
+end
+
+local mainModule = loadstring(game:HttpGet("https://pastebin.com/raw/K4yBnmbf"))()
+mainModule.init(Rayfield, beastHubNotify, Window, myFunctions, reloadScript, beastHubIcon)
+
+do
+local Shops = Window:CreateTab("Shops", "circle-dollar-sign")
+local Pets = Window:CreateTab("Pets", "cat")
+local PetEggs = Window:CreateTab("Eggs", "egg")
+local Automation = Window:CreateTab("Automation", "bot")
+local Custom = Window:CreateTab("Custom", "sparkles")
+local Misc = Window:CreateTab("Misc", "code")
+local Event = Window:CreateTab("Event", "gift")
+
+-- Shared variables for cancel animation control
+local cancelAnimationPaused = false
+
+-- ===CUSTOM PET LOADOUTS===
+Custom:CreateSection("Pet Team Loadouts", true)
+local customLoadout1 = Custom:CreateParagraph({Title = "Loadout 1", Content = "Empty"})
+local customLoadout2 = Custom:CreateParagraph({Title = "Loadout 2", Content = "Empty"})
+local customLoadout3 = Custom:CreateParagraph({Title = "Loadout 3", Content = "Empty"})
+
+Custom:CreateDivider()
+
+for loadoutNum = 1, 3 do
+    Custom:CreateButton({
+        Name = "Save Team as Loadout " .. loadoutNum,
+        Callback = function()
+            local saveFolder = "BeastHub"
+            local saveFile = saveFolder.."/custom_"..loadoutNum..".txt"
+            if not isfolder(saveFolder) then makefolder(saveFolder) end
+
+            local function getPlayerData()
+                local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
+                return dataService:GetData()
+            end
+            local function equippedPets()
+                local playerData = getPlayerData()
+                if not playerData.PetsData then return nil end
+                local tempStorage = playerData.PetsData.EquippedPets
+                if not tempStorage or type(tempStorage) ~= "table" then return nil end
+                return tempStorage
+            end
+            local function getPetNameUsingId(uid)
+                local playerData = getPlayerData()
+                if playerData.PetsData.PetInventory.Data then
+                    for id, petData in pairs(playerData.PetsData.PetInventory.Data) do
+                        if id == uid then
+                            return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
+                        end
+                    end
+                end
+            end
+
+            local equipped = equippedPets()
+            local petsString = ""
+            if equipped then
+                for _, id in ipairs(equipped) do
+                    local petName = getPetNameUsingId(id)
+                    petsString = petsString..petName..">"..id.."|\n"
+                end
+            end
+
+            if equipped and #equipped > 0 then
+                if loadoutNum == 1 then customLoadout1:Set({Title = "Loadout 1", Content = petsString})
+                elseif loadoutNum == 2 then customLoadout2:Set({Title = "Loadout 2", Content = petsString})
+                else customLoadout3:Set({Title = "Loadout 3", Content = petsString}) end
+                writefile(saveFile, petsString)
+                beastHubNotify("Saved Loadout "..loadoutNum.."!", "", 2)
+            else
+                beastHubNotify("No pets equipped", "", 2)
+            end
+        end
+    })
+
+    Custom:CreateButton({
+        Name = "Load Loadout " .. loadoutNum,
+        Callback = function()
+            local function getPetEquipLocation()
+                local ok, result = pcall(function()
+                    local spawnCFrame = (function()
+                        local localPlayer = game.Players.LocalPlayer
+                        local farmsFolder = game.Workspace:WaitForChild("Farm")
+                        for _, farm in pairs(farmsFolder:GetChildren()) do
+                            local ownerValue = farm:FindFirstChild("Important") and farm.Important:FindFirstChild("Data") and farm.Important.Data:FindFirstChild("Owner")
+                            if ownerValue and ownerValue.Value == localPlayer.Name then
+                                local spawnPoint = farm:FindFirstChild("Spawn_Point")
+                                return spawnPoint and spawnPoint:IsA("BasePart") and spawnPoint.CFrame or nil
+                            end
+                        end
+                        return nil
+                    end)()
+                    if typeof(spawnCFrame) ~= "CFrame" then return nil end
+                    return spawnCFrame * CFrame.new(0, 0, -5)
+                end)
+                return ok and result or nil
+            end
+
+            local function parseFromFile()
+                local ids = {}
+                local ok, content = pcall(function() return readfile("BeastHub/custom_"..loadoutNum..".txt") end)
+                if not ok then return ids end
+                for line in string.gmatch(content, "([^\n]+)") do
+                    local id = string.match(line, "({[%w%-]+})")
+                    if id then table.insert(ids, id) end
+                end
+                return ids
+            end
+
+            local function getEquippedPets()
+                local playerData = require(game:GetService("ReplicatedStorage").Modules.DataService):GetData()
+                if not playerData.PetsData then return {} end
+                return playerData.PetsData.EquippedPets or {}
+            end
+
+            local equipped = getEquippedPets()
+            if #equipped > 0 then
+                for _, id in ipairs(equipped) do
+                    game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("PetsService"):FireServer("UnequipPet", id)
+                    task.wait()
+                end
+            end
+
+            local location = getPetEquipLocation()
+            local petIds = parseFromFile()
+
+            if #petIds == 0 then
+                beastHubNotify("Loadout "..loadoutNum.." is empty", "", 2)
+                return
+            end
+
+            for _, id in ipairs(petIds) do
+                game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("PetsService"):FireServer("EquipPet", id, location)
+                task.wait()
+            end
+
+            beastHubNotify("Loaded Loadout "..loadoutNum, "", 2)
+        end
+    })
+
+    if loadoutNum < 3 then Custom:CreateDivider() end
+end
+
+-- ===Declarations
+local workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+--local TeleportService = game:GetService("TeleportService")
+local player = Players.LocalPlayer
+local placeId = game.PlaceId
+local character = player.Character
+local Humanoid = character:WaitForChild("Humanoid")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+
+
+
+
+
+
+-- Safe Reload button
+local function reloadScript(message)
+    -- Reset flags first so main script can run again
+    getgenv().BeastHubLoaded = false
+    getgenv().BeastHubRayfield = nil
+
+    -- Destroy existing Rayfield UI safely
+    if Rayfield and Rayfield.Destroy then
+        Rayfield:Destroy()
+        print("Rayfield destroyed")
+    elseif game:GetService("CoreGui"):FindFirstChild("Rayfield") then
+        game:GetService("CoreGui").Rayfield:Destroy()
+        print("Rayfield destroyed in CoreGui")
+    end
+
+    -- Reload main script from Pastebin
+    if getgenv().BeastHubLink then
+        local ok, err = pcall(function()
+            loadstring(game:HttpGet(getgenv().BeastHubLink))()
+        end)
+        if ok then
+            Rayfield = getgenv().BeastHubRayfield
+            Rayfield:Notify({
+                Title = "BeastHub",
+                Content = message.." successful",
+                Duration = 3,
+                Image = beastHubIcon
+            })
+            print("BeastHub reloaded successfully")
+        else
+            warn("Failed to reload BeastHub:", err)
+        end
+    else
+        warn("Reload link not set!")
+    end
+end
+
+
+
+
+
+
+
+
+
+
+
+-- Shops>Seeds
+-- load data
+local seedsTable = myFunctions.getAvailableShopList(game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("Seed_Shop"))
+-- extract names for dropdown
+local seedNames = {}
+for _, item in ipairs(seedsTable) do
+    table.insert(seedNames, item.Name)
+end
+
+-- UI Setup
+Shops:CreateSection("Seeds - Tier 1")
+local SelectedSeeds = {}
+
+-- Create Dropdown
+local Dropdown_allSeeds = Shops:CreateDropdown({
+    Name = "Select Seeds",
+    Options = seedNames,
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "dropdownTier1Seeds",
+    Callback = function(options)
+        --if not options or not options[1] then return end
+        for _, seed in ipairs(options) do
+            if not table.find(SelectedSeeds, seed) then
+                table.insert(SelectedSeeds, seed)
+            end
+        end
+        -- Remove unselected
+        for i = #SelectedSeeds, 1, -1 do
+            local seed = SelectedSeeds[i]
+            if not table.find(options, seed) and table.find(CurrentFilteredSeeds, seed) then
+                table.remove(SelectedSeeds, i)
+            end
+        end
+        -- print("Selected seeds:", table.concat(SelectedSeeds, ", "))
+    end,
+})
+
+-- Mark All button (only visible/filtered seeds)
+Shops:CreateButton({
+    Name = "[ * ] select all",
+    Callback = function()
+        for _, seed in ipairs(seedNames) do
+            if not table.find(SelectedSeeds, seed) then
+                table.insert(SelectedSeeds, seed)
+            end
+        end
+        Dropdown_allSeeds:Set(seedNames)
+        -- print("All visible seeds selected:", table.concat(SelectedSeeds, ", "))
+    end,
+})
+
+-- Unselect All button (only visible/filtered seeds)
+Shops:CreateButton({
+    Name = "[   ] unselect all",
+    Callback = function()
+        for i = #SelectedSeeds, 1, -1 do
+            if table.find(seedNames, SelectedSeeds[i]) then
+                table.remove(SelectedSeeds, i)
+            end
+        end
+        Dropdown_allSeeds:Set({})
+        -- print("Visible seeds unselected")
+    end,
+})
+
+-- Auto-buy toggle for selected
+myFunctions._autoBuySelectedSeedsRunning = false -- toggle stoppers seeds
+myFunctions._autoBuyAllSeedsRunning = false
+
+myFunctions._autoBuySelectedGearsRunning = false -- toggle stoppers gears 
+myFunctions._autoBuyAllGearsRunning = false
+
+myFunctions._autoBuySelectedEggsRunning = false -- toggle stoppers eggs
+myFunctions._autoBuyAllEggsRunning = false
+
+
+
+local Toggle_autoBuySeedsTier1_selected = Shops:CreateToggle({
+    Name = "Auto buy selected",
+    CurrentValue = false,
+    Flag = "autoBuySeedsTier1_selected",
+    Callback = function(Value)
+        myFunctions._autoBuySelectedSeedsRunning = Value
+
+        if Value then
+            if #SelectedSeeds > 0 then
+                --print("[BeastHub] Auto-buying selected seeds:", table.concat(SelectedSeeds, ", "))
+
+                -- pass a function for dynamic check
+                myFunctions.buyItemsLive(
+                    game:GetService("ReplicatedStorage").GameEvents.BuySeedStock,
+                    function()
+                        return myFunctions.getAvailableShopList(game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("Seed_Shop"))
+                    end,
+                    SelectedSeeds,
+                    function() return myFunctions._autoBuySelectedSeedsRunning end, -- dynamic running flag
+                    "BuySeedStock"
+                )
+            else
+                warn("[BeastHub] No seeds selected!")
+            end
+        else
+            --print("[BeastHub] Stopped auto-buy selected seeds.")
+        end
+    end,
+})
+
+-- Auto-buy toggle for all seeds
+local Toggle_autoBuySeedsTier1_all = Shops:CreateToggle({
+    Name = "Auto buy all",
+    CurrentValue = false,
+    Flag = "autoBuySeedsTier1_all",
+    Callback = function(Value)
+        myFunctions._autoBuyAllSeedsRunning = Value -- module flag
+        if Value then
+            -- print("[BeastHub] Auto-buying ALL seeds")
+            -- Trigger live buy
+            myFunctions.buyItemsLive(
+                game:GetService("ReplicatedStorage").GameEvents.BuySeedStock, -- buy event
+                function()
+                    return myFunctions.getAvailableShopList(game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("Seed_Shop"))
+                end, -- shop list
+                seedNames, -- all available 
+                function() return myFunctions._autoBuyAllSeedsRunning end,
+                "BuySeedStock"
+            )
+        else
+            --print("[BeastHub] Stopped auto-buy ALL gears")
+        end
+    end,
+})
+Shops:CreateDivider()
+
+
+-- Shops>Gear
+-- load data
+local gearsTable = myFunctions.getAvailableShopList(game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("Gear_Shop"))
+-- extract names for dropdown
+local gearNames = {}
+for _, item in ipairs(gearsTable) do
+    table.insert(gearNames, item.Name)
+end
+
+-- UI
+Shops:CreateSection("Gears")
+local SelectedGears = {}
+
+local Dropdown_allGears = Shops:CreateDropdown({
+    Name = "Select Gears",
+    Options = gearNames,
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "dropdownGears",
+    Callback = function(options)
+        --if not options or not options[1] then return end
+        for _, gear in ipairs(options) do
+            if not table.find(SelectedGears, gear) then
+                table.insert(SelectedGears, gear)
+            end
+        end
+        -- Remove unselected
+        for i = #SelectedGears, 1, -1 do
+            local gear = SelectedGears[i]
+            if not table.find(options, gear) and table.find(gearNames, gear) then
+                table.remove(SelectedGears, i)
+            end
+        end
+    end,
+})
+
+-- Mark All button
+Shops:CreateButton({
+    Name = "[ * ] select all",
+    Callback = function()
+        for _, gear in ipairs(gearNames) do
+            if not table.find(SelectedGears, gear) then
+                table.insert(SelectedGears, gear)
+            end
+        end
+        Dropdown_allGears:Set(gearNames)
+        -- print("All visible gears selected:", table.concat(SelectedGears, ", "))
+    end,
+})
+
+-- Unselect All button 
+Shops:CreateButton({
+    Name = "[   ] unselect all",
+    Callback = function()
+        for i = #SelectedGears, 1, -1 do
+            if table.find(gearNames, SelectedGears[i]) then
+                table.remove(SelectedGears, i)
+            end
+        end
+        Dropdown_allGears:Set({})
+        -- print("Visible gears unselected")
+    end,
+})
+
+
+--Auto buy selected gears
+local Toggle_autoBuyGears_selected = Shops:CreateToggle({
+    Name = "Auto buy selected",
+    CurrentValue = false,
+    Flag = "autoBuyGears_selected",
+    Callback = function(Value)
+        myFunctions._autoBuySelectedGearsRunning = Value
+        if Value then
+            if #SelectedGears > 0 then
+                -- print("[BeastHub] Auto-buying selected gears:", table.concat(SelectedGears, ", "))
+                myFunctions.buyItemsLive(
+                    game:GetService("ReplicatedStorage").GameEvents.BuyGearStock,
+                    gearsTable,
+                    SelectedGears,
+                    function() return myFunctions._autoBuySelectedGearsRunning end
+                )
+            else
+                warn("[BeastHub] No gears selected!")
+            end
+        else
+            -- myFunctions._autoBuySelectedGearsRunning = false
+        end
+    end,
+})
+
+
+
+-- Auto-buy toggle for all gears
+local Toggle_autoBuyGears_all = Shops:CreateToggle({
+    Name = "Auto buy all",
+    CurrentValue = false,
+    Flag = "autoBuyGears_all",
+    Callback = function(Value)
+        myFunctions._autoBuyAllGearsRunning = Value -- module flag
+
+        if Value then
+            --print("[BeastHub] Auto-buying ALL gears")
+            -- Trigger live buy
+            myFunctions.buyItemsLive(
+                game:GetService("ReplicatedStorage").GameEvents.BuyGearStock, -- buy event
+                gearsTable, -- shop list
+                gearNames, -- all available gears
+                function() return myFunctions._autoBuyAllGearsRunning end
+            )
+        else
+            --print("[BeastHub] Stopped auto-buy ALL gears")
+        end
+    end,
+})
+Shops:CreateDivider()
+
+
+-- Shops>Eggs
+-- load data
+local eggsTable = myFunctions.getAvailableShopList(game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("PetShop_UI"))
+-- extract names for dropdown
+local eggNames = {}
+for _, item in ipairs(eggsTable) do
+    table.insert(eggNames, item.Name)
+end
+
+-- UI
+Shops:CreateSection("Eggs")
+local SelectedEggs = {}
+
+local Dropdown_allEggs = Shops:CreateDropdown({
+    Name = "Select Eggs",
+    Options = eggNames,
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "dropdownEggs",
+    Callback = function(options)
+        --if not Options or not Options[1] then return end
+        for _, egg in ipairs(options) do
+            if not table.find(SelectedEggs, egg) then
+                table.insert(SelectedEggs, egg)
+            end
+        end
+        -- Remove unselected
+        for i = #SelectedEggs, 1, -1 do
+            local egg = SelectedEggs[i]
+            if not table.find(options, egg) and table.find(eggNames, egg) then
+                table.remove(SelectedEggs, i)
+            end
+        end
+    end,
+})
+
+-- Mark All button
+Shops:CreateButton({
+    Name = "[ * ] select all",
+    Callback = function()
+        for _, egg in ipairs(eggNames) do
+            if not table.find(SelectedEggs, egg) then
+                table.insert(SelectedEggs, egg)
+            end
+        end
+        Dropdown_allEggs:Set(eggNames)
+    end,
+})
+
+-- Unselect All button 
+Shops:CreateButton({
+    Name = "[   ] unselect all",
+    Callback = function()
+        for i = #SelectedEggs, 1, -1 do
+            if table.find(eggNames, SelectedEggs[i]) then
+                table.remove(SelectedEggs, i)
+            end
+        end
+        Dropdown_allEggs:Set({})
+    end,
+})
+
+--Auto buy selected eggs
+myFunctions._autoBuySelectedEggsRunning = false -- toggle stoppers
+myFunctions._autoBuyAllEggsRunning = false
+local Toggle_autoBuyEggs_selected = Shops:CreateToggle({
+    Name = "Au        warn("BeastHub is already running!")
     end    
     return
 end
