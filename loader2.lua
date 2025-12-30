@@ -1,5 +1,11 @@
 -- security checks (cleaned)
-local username = game.Players.LocalPlayer.Name
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+if not localPlayer then
+    Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
+    localPlayer = Players.LocalPlayer
+end
+local username = localPlayer.Name
 
 -- Removed:
 -- expectedURL
@@ -16,7 +22,7 @@ if not getgenv().BeastHubRayfield then
     getgenv().BeastHubRayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 end
 local Rayfield = getgenv().BeastHubRayfield
-local beastHubIcon = 88823002331312
+local beastHubIcon = "rbxassetid://88823002331312"
 
 -- Prevent multiple Rayfield instances
 if getgenv().BeastHubLoaded then
@@ -219,8 +225,11 @@ local Players = game:GetService("Players")
 --local TeleportService = game:GetService("TeleportService")
 local player = Players.LocalPlayer
 local placeId = game.PlaceId
-local character = player.Character
-local Humanoid = character:WaitForChild("Humanoid")
+local character = player.Character or player.CharacterAdded:Wait()
+local Humanoid = character:WaitForChild("Humanoid", 10)
+if not Humanoid then
+    warn("BeastHub: Humanoid not found within timeout")
+end
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
