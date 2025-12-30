@@ -1,5 +1,5 @@
 -- security checks (cleaned)
-local username = game.Players.LocalPlayer.Name
+--local username = game.Players.LocalPlayer.Name
 
 -- Removed:
 -- expectedURL
@@ -34,7 +34,7 @@ if getgenv().BeastHubLoaded then
 end
 
 getgenv().BeastHubLoaded = true
-getgenv().BeastHubLink = "https://pastebin.com/raw/GjsWnygW"
+--getgenv().BeastHubLink = "https://pastebin.com/raw/GjsWnygW"
 
 
 -- Load my reusable functions
@@ -215,14 +215,23 @@ end
 -- ===Declarations
 local workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
+--local TeleportService = game:GetService("TeleportService")
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
+local placeId = game.PlaceId
+local character = player.Character
 local Humanoid = character:WaitForChild("Humanoid")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
+
+
+
+
+
+
 -- Safe Reload button
 local function reloadScript(message)
+    -- Reset flags first so main script can run again
     getgenv().BeastHubLoaded = false
     getgenv().BeastHubRayfield = nil
 
@@ -236,10 +245,10 @@ local function reloadScript(message)
     end
 
     -- Reload main script from Pastebin
-    if getgenv().BeastHubLink then
-        local ok, err = pcall(function()
-            loadstring(game:HttpGet(getgenv().BeastHubLink))()
-        end)
+ --   if getgenv().BeastHubLink then
+     --   local ok, err = pcall(function()
+     --       loadstring(game:HttpGet(getgenv().BeastHubLink))()
+     --   end)
         if ok then
             Rayfield = getgenv().BeastHubRayfield
             Rayfield:Notify({
