@@ -219,8 +219,15 @@ local Players = game:GetService("Players")
 --local TeleportService = game:GetService("TeleportService")
 local player = Players.LocalPlayer
 local placeId = game.PlaceId
-local character = player.Character
-local Humanoid = character:WaitForChild("Humanoid")
+local function safeGetHumanoid()
+    local char = player.Character or player.CharacterAdded:Wait()
+    return char:WaitForChild("Humanoid", 5)
+end
+
+local Humanoid = safeGetHumanoid()
+if not Humanoid then
+    warn("BeastHub: Humanoid not found within timeout")
+end
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
