@@ -1408,33 +1408,42 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                     --check eggs
                     local myPetEggs = myFunctions.getMyFarmPetEggs()
                     local readyCounter = 0
-
                     for _, egg in pairs(myPetEggs) do
                         if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
                             readyCounter = readyCounter + 1
                         end
                     end
 
-                    if #myPetEggs > 0 and #myPetEggs == readyCounter and smartAutoHatchingEnabled then
-                        --all eggs ready to hatch
-                        beastHubNotify("All eggs Ready!", "", 3)
-                        local espFolderFound
-                        local rareOrHugeFound
-                        local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                        local PetEggService = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("PetEggService")
-
-
-                        --all eggs now must start with koi loadout, infinite loadout has been patched 10/24/25
-                        beastHubNotify("Switching to Kois", "", 8)
-                        Toggle_autoPlaceEggs:Set(false)
-                        -- Pause cancel animation before switching to koi loadout
-                        cancelAnimationPaused = true
-                        myFunctions.switchToLoadout(koiLoady)
-                        task.wait(12)
-
-                        --get egg data such as pet name and size
-                        --=======================================
+                    if #myPetEggs > 0 and smartAutoHatchingEnabled then
+                        local readyToHatch = {}
                         for _, egg in pairs(myPetEggs) do
+                            if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
+                                table.insert(readyToHatch, egg)
+                            end
+                        end
+
+                        if #readyToHatch > 0 then
+                            -- eggs ready to hatch
+                            beastHubNotify("Eggs Ready!", "", 3)
+                            local espFolderFound
+                            local rareOrHugeFound
+                            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                            local PetEggService = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("PetEggService")
+
+                            --all eggs now must start with koi loadout, infinite loadout has been patched 10/24/25
+                            beastHubNotify("Switching to Kois", "", 8)
+                            Toggle_autoPlaceEggs:Set(false)
+                            -- Resume cancel animation when Eagles Loadout is active
+                            cancelAnimationPaused = false 
+                            -- Pause cancel animation before switching to koi loadout
+                            cancelAnimationPaused = true
+                            task.wait(3) -- Wait 3 seconds checking if paused
+                            myFunctions.switchToLoadout(koiLoady)
+                            task.wait(12)
+
+                            --get egg data such as pet name and size
+                            --=======================================
+                            for _, egg in pairs(readyToHatch) do
                             if egg:IsA("Model") then
                                 --ESP access part, this is mainly for bronto hatching
                                 --====
@@ -1590,7 +1599,6 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                 --====
                             else
                                 warn("Object is not a model")
-                                return
                             end
                         end
 
