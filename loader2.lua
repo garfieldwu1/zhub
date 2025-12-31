@@ -5256,7 +5256,7 @@ Event:CreateButton({
             })
         end,
     })
-    
+
     local input_autoFeedPercentage = Automation:CreateInput({
         Name = "Auto feed when Hunger % is:",
         CurrentValue = "25",
@@ -5280,7 +5280,7 @@ Event:CreateButton({
     local selectedFruitsForAutoFeed
     local dropdown_selectedFruitForAutoFeed = Automation:CreateDropdown({
         Name = "Select Fruit",
-        Options = allSeedsOnly,
+        Options = seedNames,
         CurrentOption = {},
         MultipleOptions = true,
         Flag = "selectedFruit_autoFeed", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
@@ -5302,9 +5302,9 @@ Event:CreateButton({
                 local query = string.lower(Text)
 
                 if query == "" then
-                    results = allSeedsOnly
+                    results = seedNames
                 else
-                    for _, fruitName in ipairs(allSeedsOnly) do
+                    for _, fruitName in ipairs(seedNames) do
                         if string.find(string.lower(fruitName), query, 1, true) then
                             table.insert(results, fruitName)
                         end
@@ -5457,7 +5457,8 @@ Event:CreateButton({
                                 while hungerPercent < targetHunger and autoPetFeedEnabled do
                                     local fruitUid = getFeedFruitUid(playerData, fruitList)
                                     if fruitUid then
-                                        equipFruitById(fruitUid)
+                                        -- equip fruit
+                                        game:GetService("ReplicatedStorage").GameEvents.InventoryService:FireServer("EquipItem", fruitUid)
                                         task.wait()
                                         ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
                                         task.wait(0.2)
