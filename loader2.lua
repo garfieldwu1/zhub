@@ -1024,10 +1024,10 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete)
             if isTarget and weight and weight < weightTargetBelow then
                 player.Character.Humanoid:UnequipTools()
                 player.Character.Humanoid:EquipTool(item)
-                task.wait(0.2) -- ensure pet equips before selling
+                task.wait(0.1) -- ensure pet equips before selling
                 SellPet_RE:FireServer(item.Name)
                 print("Sold:", item.Name)
-                task.wait(0.2)
+                task.wait(0.02)
             end
         end
     end
