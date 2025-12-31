@@ -5255,7 +5255,7 @@ Event:CreateButton({
             })
         end,
     })
-    
+
     local input_autoFeedPercentage = Automation:CreateInput({
         Name = "Auto feed when Hunger % is:",
         CurrentValue = "25",
@@ -5342,12 +5342,14 @@ Event:CreateButton({
                 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
                 local function getPlayerData()
-                    local dataService = require(ReplicatedStorage.Modules.DataService)
-                    return dataService:GetData()
+                    local ok, data = pcall(function()
+                        return require(ReplicatedStorage.Modules.DataService):GetData()
+                    end)
+                    return ok and data or nil
                 end
 
                 local okRegistry, PetRegistry = pcall(function()
-                    return require(ReplicatedStorage.Data.PetRegistry.PetList)
+                    return require(ReplicatedStorage.Data.PetRegistry)
                 end)
 
                 if not okRegistry or type(PetRegistry) ~= "table" then
@@ -5356,9 +5358,11 @@ Event:CreateButton({
                 end
 
                 local petDefaultHunger = {}
-                for petName, data in pairs(PetRegistry) do
-                    if type(data) == "table" and data.DefaultHunger then
-                        petDefaultHunger[petName] = data.DefaultHunger
+                if PetRegistry.PetList then
+                    for petName, data in pairs(PetRegistry.PetList) do
+                        if type(data) == "table" and data.DefaultHunger then
+                            petDefaultHunger[petName] = data.DefaultHunger
+                        end
                     end
                 end
 
@@ -5442,7 +5446,7 @@ Event:CreateButton({
                                 break
                             end
 
-                            local petId = (pet:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
+                            local petId = (pet:match("^[^|]+|%s*(.+)$") or ""):gsub("%s", "")
                             if petId == "" then
                                 continue
                             end
@@ -5456,7 +5460,9 @@ Event:CreateButton({
                                 while hungerPercent < targetHunger and autoPetFeedEnabled do
                                     local fruitUid = getFeedFruitUid(playerData, fruitList)
                                     if fruitUid then
-                                        equipFruitById(fruitUid)
+                                        if typeof(getgenv().BeastHubFunctions) == "table" and getgenv().BeastHubFunctions.equipFruitById then
+                                            getgenv().BeastHubFunctions.equipFruitById(fruitUid)
+                                        end
                                         task.wait()
                                         ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
                                         task.wait(0.2)
