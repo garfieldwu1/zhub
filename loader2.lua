@@ -5163,6 +5163,7 @@ Event:CreateButton({
     })
     Automation:CreateDivider()
 
+        --Auto feed
     Automation:CreateSection("Auto Feed")
     local parag_petsToFeed = Automation:CreateParagraph({
         Title = "Pet/s to feed:",
@@ -5456,10 +5457,6 @@ Event:CreateButton({
                                 while hungerPercent < targetHunger and autoPetFeedEnabled do
                                     local fruitUid = getFeedFruitUid(playerData, fruitList)
                                     if fruitUid then
-                                    local function equipFruitById(uid)
-                                            local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                                            ReplicatedStorage.GameEvents.InventoryService:FireServer("EquipItem", uid)
-                                        end
                                         equipFruitById(fruitUid)
                                         task.wait()
                                         ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
@@ -5493,11 +5490,6 @@ Event:CreateButton({
 
 
     Automation:CreateDivider()
-
-    -- CUSTOM
-
-    -- END
---end
 
 local function antiAFK()
     -- Prevent multiple connections
