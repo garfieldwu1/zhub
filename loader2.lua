@@ -5265,6 +5265,7 @@ Event:CreateButton({
                         if #petList > 0 and #fruitList > 0 then
                             local playerData = getPlayerData()
                             for _, pet in ipairs(petList) do
+                                if not autoPetFeedEnabled then break end
                                 local petId = (pet:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
                                 local pData = playerData.PetsData.PetInventory.Data[petId]
                                 if pData then
@@ -5272,55 +5273,45 @@ Event:CreateButton({
                                     if defHunger then
                                         local hungerPct = (pData.PetData.Hunger / defHunger) * 100
                                         if hungerPct <= hungerLimit then
-                                            -- Equip fruit first
-                                            local fruitName = fruitList[1] -- Pick first selected fruit
-                                            if fruitName then
-                                                -- Find fruit UID
-                                                local fruitUid = nil
-                                                for uid, item in pairs(playerData.InventoryData) do
-                                                    if item.ItemType == "Holdable" and item.ItemData.ItemName == fruitName then
-                                                        fruitUid = uid
-                                                        break
-                                                    end
-                                                end
+                                            -- Iterate through all selected fruits if the first one runs out
+                                            for _, fruitName in ipairs(fruitList) do
+                                                if hungerPct >= targetHunger or not autoPetFeedEnabled then break end
                                                 
+                                                -- Find fruit UID in inventory
+                                                local function findFruitUid(currentData, name)
+                                                    for uid, item in pairs(currentData.InventoryData) do
+                                                        if item.ItemType == "Holdable" and item.ItemData.ItemName == name then
+                                                            return uid
+                                                        end
+                                                    end
+                                                    return nil
+                                                end
+
+                                                local fruitUid = findFruitUid(playerData, fruitName)
                                                 if fruitUid then
                                                     -- Equip the fruit
                                                     ReplicatedStorage.GameEvents.InventoryService:FireServer("Equip", fruitUid)
                                                     task.wait(0.3)
                                                     
                                                     while hungerPct < targetHunger and autoPetFeedEnabled do
-                                                        -- Re-verify we still have fruit (or just assume we are holding it now)
+                                                        -- Feed the pet
                                                         ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
-                                                        task.wait(0.2)
+                                                        task.wait(0.25)
+                                                        
                                                         playerData = getPlayerData()
-                                                        pData = playerData.PetsData.PetInventory.Data[petId]
+                                                        pData = (playerData.PetsData and playerData.PetsData.PetInventory.Data[petId])
                                                         if not pData then break end
                                                         hungerPct = (pData.PetData.Hunger / defHunger) * 100
                                                         
-                                                        -- Check if we still have the fruit in inventory (it gets consumed)
-                                                        local stillHasFruit = false
-                                                        for uid, item in pairs(playerData.InventoryData) do
-                                                            if uid == fruitUid then
-                                                                stillHasFruit = true
-                                                                break
-                                                            end
-                                                        end
-                                                        
-                                                        if not stillHasFruit then
-                                                            -- Try to find another one of the same type
-                                                            fruitUid = nil
-                                                            for uid, item in pairs(playerData.InventoryData) do
-                                                                if item.ItemType == "Holdable" and item.ItemData.ItemName == fruitName then
-                                                                    fruitUid = uid
-                                                                    break
-                                                                end
-                                                            end
+                                                        -- Verify if we still have THIS specific fruit UID (consumed)
+                                                        if not playerData.InventoryData[fruitUid] then
+                                                            -- Try to find another one of the SAME fruit type
+                                                            fruitUid = findFruitUid(playerData, fruitName)
                                                             if fruitUid then
                                                                 ReplicatedStorage.GameEvents.InventoryService:FireServer("Equip", fruitUid)
                                                                 task.wait(0.3)
                                                             else
-                                                                break -- Out of this fruit
+                                                                break -- This fruit type is exhausted, move to next in fruitList
                                                             end
                                                         end
                                                     end
@@ -5331,7 +5322,7 @@ Event:CreateButton({
                                 end
                             end
                         end
-                        task.wait(2)
+                        task.wait(1)
                     end
                     autoPetFeedThread = nil
                 end)
