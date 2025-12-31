@@ -5259,8 +5259,8 @@ Event:CreateButton({
                     while autoPetFeedEnabled do
                         local petList = dropdown_selectPetsForFeed.CurrentOption or {}
                         local fruitList = dropdown_selectedFruitForAutoFeed.CurrentOption or {}
-                        local hungerLimit = tonumber(input_autoFeedPercentage.CurrentValue) or 25
-                        local targetHunger = tonumber(input_autoFeedUntilPercentage.CurrentValue) or 100
+                        local hungerLimit = tonumber(Rayfield.Flags.autoFeedPercentage and Rayfield.Flags.autoFeedPercentage.Value) or tonumber(input_autoFeedPercentage.CurrentValue) or 25
+                        local targetHunger = tonumber(Rayfield.Flags.autoFeedUntilPercentage and Rayfield.Flags.autoFeedUntilPercentage.Value) or tonumber(input_autoFeedUntilPercentage.CurrentValue) or 100
 
                         if #petList > 0 and #fruitList > 0 then
                             local playerData = getPlayerData()
@@ -5272,22 +5272,58 @@ Event:CreateButton({
                                     if defHunger then
                                         local hungerPct = (pData.PetData.Hunger / defHunger) * 100
                                         if hungerPct <= hungerLimit then
-                                            while hungerPct < targetHunger and autoPetFeedEnabled do
+                                            -- Equip fruit first
+                                            local fruitName = fruitList[1] -- Pick first selected fruit
+                                            if fruitName then
+                                                -- Find fruit UID
                                                 local fruitUid = nil
                                                 for uid, item in pairs(playerData.InventoryData) do
-                                                    if item.ItemType == "Holdable" and table.find(fruitList, item.ItemData.ItemName) then
+                                                    if item.ItemType == "Holdable" and item.ItemData.ItemName == fruitName then
                                                         fruitUid = uid
                                                         break
                                                     end
                                                 end
+                                                
                                                 if fruitUid then
-                                                    ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
-                                                    task.wait(0.2)
-                                                    playerData = getPlayerData()
-                                                    pData = playerData.PetsData.PetInventory.Data[petId]
-                                                    hungerPct = (pData.PetData.Hunger / defHunger) * 100
-                                                else
-                                                    break
+                                                    -- Equip the fruit
+                                                    ReplicatedStorage.GameEvents.InventoryService:FireServer("Equip", fruitUid)
+                                                    task.wait(0.3)
+                                                    
+                                                    while hungerPct < targetHunger and autoPetFeedEnabled do
+                                                        -- Re-verify we still have fruit (or just assume we are holding it now)
+                                                        ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
+                                                        task.wait(0.2)
+                                                        playerData = getPlayerData()
+                                                        pData = playerData.PetsData.PetInventory.Data[petId]
+                                                        if not pData then break end
+                                                        hungerPct = (pData.PetData.Hunger / defHunger) * 100
+                                                        
+                                                        -- Check if we still have the fruit in inventory (it gets consumed)
+                                                        local stillHasFruit = false
+                                                        for uid, item in pairs(playerData.InventoryData) do
+                                                            if uid == fruitUid then
+                                                                stillHasFruit = true
+                                                                break
+                                                            end
+                                                        end
+                                                        
+                                                        if not stillHasFruit then
+                                                            -- Try to find another one of the same type
+                                                            fruitUid = nil
+                                                            for uid, item in pairs(playerData.InventoryData) do
+                                                                if item.ItemType == "Holdable" and item.ItemData.ItemName == fruitName then
+                                                                    fruitUid = uid
+                                                                    break
+                                                                end
+                                                            end
+                                                            if fruitUid then
+                                                                ReplicatedStorage.GameEvents.InventoryService:FireServer("Equip", fruitUid)
+                                                                task.wait(0.3)
+                                                            else
+                                                                break -- Out of this fruit
+                                                            end
+                                                        end
+                                                    end
                                                 end
                                             end
                                         end
