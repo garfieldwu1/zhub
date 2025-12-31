@@ -219,15 +219,8 @@ local Players = game:GetService("Players")
 --local TeleportService = game:GetService("TeleportService")
 local player = Players.LocalPlayer
 local placeId = game.PlaceId
-local function safeGetHumanoid()
-    local char = player.Character or player.CharacterAdded:Wait()
-    return char:WaitForChild("Humanoid", 5)
-end
-
-local Humanoid = safeGetHumanoid()
-if not Humanoid then
-    warn("BeastHub: Humanoid not found within timeout")
-end
+local character = player.Character
+local Humanoid = character:WaitForChild("Humanoid")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
@@ -5170,97 +5163,45 @@ Event:CreateButton({
     })
     Automation:CreateDivider()
 
-        --Auto feed
     Automation:CreateSection("Auto Feed")
-    local parag_petsToFeed = Automation:CreateParagraph({
-        Title = "Pet/s to feed:",
-        Content = "None"
-    })
     local dropdown_selectPetsForFeed = Automation:CreateDropdown({
         Name = "Select Pet/s",
         Options = {},
         CurrentOption = {},
         MultipleOptions = true,
         Flag = "selectPetsForFeed", 
-        Callback = function(Options)
-            local listText = table.concat(Options, ", ")
-            if listText == "" then
-                listText = "None"
-            end
-
-            parag_petsToFeed:Set({
-                Title = "Pet/s to feed:",
-                Content = listText
-            })
-        end,
-
+        Callback = function(Options) end,
     })
-
     Automation:CreateButton({
         Name = "Refresh list",
         Callback = function()
             local function getPlayerData()
                 local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
-                local logs = dataService:GetData()
-                return logs
+                return dataService:GetData()
             end
-
             local function equippedPets()
                 local playerData = getPlayerData()
-                if not playerData.PetsData then
-                    warn("PetsData missing")
-                    return nil
-                end
-
-                local tempStorage = playerData.PetsData.EquippedPets
-                if not tempStorage or type(tempStorage) ~= "table" then
-                    warn("EquippedPets missing or invalid")
-                    return nil
-                end
-
-                local petIdsList = {}
-                for _, id in ipairs(tempStorage) do
-                    table.insert(petIdsList, id)
-                end
-
-                return petIdsList
+                if not playerData.PetsData then return nil end
+                return playerData.PetsData.EquippedPets
             end
-
             local function getPetNameUsingId(uid)
                 local playerData = getPlayerData()
                 if playerData.PetsData.PetInventory.Data then
-                    local data = playerData.PetsData.PetInventory.Data
-                    for id,petData in pairs(data) do
-                        if id == uid then
-                            return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
-                        end
+                    local petData = playerData.PetsData.PetInventory.Data[uid]
+                    if petData then
+                        return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
                     end
                 end
             end
-
             local equipped = equippedPets()
             local namesToId = {}
-            for _,id in ipairs(equipped) do
-                local petName = getPetNameUsingId(id)
-                table.insert(namesToId, petName.." | "..id)
+            if equipped then
+                for _,id in ipairs(equipped) do
+                    local petName = getPetNameUsingId(id)
+                    table.insert(namesToId, petName.." | "..id)
+                end
             end
-
-            if equipped and #equipped > 0 then
-                dropdown_selectPetsForFeed:Refresh(namesToId)
-            else
-                beastHubNotify("equipped pets error", "", 3)
-            end
-        end,
-    })
-
-    Automation:CreateButton({
-        Name = "Clear Selected",
-        Callback = function()
-            dropdown_selectPetsForFeed:Set({})
-            parag_petsToFeed:Set({
-                Title = "Pet/s to feed:",
-                Content = "None"
-            })
+            dropdown_selectPetsForFeed:Refresh(namesToId)
         end,
     })
 
@@ -5270,8 +5211,7 @@ Event:CreateButton({
         PlaceholderText = "number",
         RemoveTextAfterFocusLost = false,
         Flag = "autoFeedPercentage",
-        Callback = function(Text)
-        end,
+        Callback = function(Text) end,
     })
 
     local input_autoFeedUntilPercentage = Automation:CreateInput({
@@ -5280,224 +5220,95 @@ Event:CreateButton({
         PlaceholderText = "number",
         RemoveTextAfterFocusLost = false,
         Flag = "autoFeedUntilPercentage",
-        Callback = function(Text)
-        end,
+        Callback = function(Text) end,
     })
 
-    local selectedFruitsForAutoFeed
     local dropdown_selectedFruitForAutoFeed = Automation:CreateDropdown({
         Name = "Select Fruit",
         Options = seedNames,
         CurrentOption = {},
         MultipleOptions = true,
-        Flag = "selectedFruit_autoFeed", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-        Callback = function(Options)
-            selectedFruitsForAutoFeed = Options
-        end,
-    })
-    local searchDebounce_seedForFeed = nil
-    Automation:CreateInput({
-        Name = "Search fruit",
-        PlaceholderText = "fruit",
-        RemoveTextAfterFocusLost = false,
-        Callback = function(Text)
-            if searchDebounce_seedForFeed then
-                task.cancel(searchDebounce_seedForFeed)
-            end
-            searchDebounce_seedForFeed = task.delay(0.5, function()
-                local results = {}
-                local query = string.lower(Text)
-
-                if query == "" then
-                    results = seedNames
-                else
-                    for _, fruitName in ipairs(seedNames) do
-                        if string.find(string.lower(fruitName), query, 1, true) then
-                            table.insert(results, fruitName)
-                        end
-                    end
-                end
-                dropdown_selectedFruitForAutoFeed:Refresh(results)
-                dropdown_selectedFruitForAutoFeed:Set(selectedFruitsForAutoFeed) --set to current selected
-
-            end)
-        end,
-    })
-    Automation:CreateButton({
-        Name = "Clear fruit",
-        Callback = function()
-            dropdown_selectedFruitForAutoFeed:Set({})
-        end,
+        Flag = "selectedFruit_autoFeed",
+        Callback = function(Options) end,
     })
 
     local autoPetFeedEnabled = false
     local autoPetFeedThread = nil
-
     Automation:CreateToggle({
         Name = "Auto Feed",
         CurrentValue = false,
         Flag = "autoFeed",
         Callback = function(Value)
             autoPetFeedEnabled = Value
-
             if autoPetFeedEnabled then
-                if autoPetFeedThread then
-                    return
-                end
-
+                if autoPetFeedThread then return end
                 beastHubNotify("Auto pet feed running", "", 3)
-
-                local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-                local function getPlayerData()
-                    local dataService = require(ReplicatedStorage.Modules.DataService)
-                    return dataService:GetData()
-                end
-
-                local okRegistry, PetRegistry = pcall(function()
-                    return require(ReplicatedStorage.Data.PetRegistry.PetList)
-                end)
-
-                if not okRegistry or type(PetRegistry) ~= "table" then
-                    warn("AutoFeed: failed to load PetRegistry")
-                    return
-                end
-
-                local petDefaultHunger = {}
-                for petName, data in pairs(PetRegistry) do
-                    if type(data) == "table" and data.DefaultHunger then
-                        petDefaultHunger[petName] = data.DefaultHunger
-                    end
-                end
-
                 autoPetFeedThread = task.spawn(function()
-                    local function getPetHungerPercent(petId)
-                        local playerData = getPlayerData()
-                        if not playerData then return nil end
-
-                        local petInventory = playerData
-                            and playerData.PetsData
-                            and playerData.PetsData.PetInventory
-                            and playerData.PetsData.PetInventory.Data
-
-                        if not petInventory then return nil end
-
-                        for id, data in pairs(petInventory) do
-                            if tostring(id) == tostring(petId) then
-                                if not data.PetData or not data.PetData.Hunger or not data.PetType then
-                                    return nil
-                                end
-
-                                local defaultHunger = petDefaultHunger[data.PetType]
-                                if not defaultHunger then
-                                    return nil
-                                end
-
-                                return (data.PetData.Hunger / defaultHunger) * 100
-                            end
-                        end
-
-                        return nil
+                    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                    local function getPlayerData()
+                        return require(ReplicatedStorage.Modules.DataService):GetData()
                     end
-
-                    local function getFeedFruitUid(playerData, selectedFruits)
-                        if not playerData or not playerData.InventoryData then
-                            return nil
+                    local PetRegistry = require(ReplicatedStorage.Data.PetRegistry.PetList)
+                    local petDefaultHunger = {}
+                    for petName, data in pairs(PetRegistry) do
+                        if type(data) == "table" and data.DefaultHunger then
+                            petDefaultHunger[petName] = data.DefaultHunger
                         end
-
-                        for uid, item in pairs(playerData.InventoryData) do
-                            if item.ItemType == "Holdable" then
-                                local itemData = item.ItemData
-                                if itemData and not itemData.IsFavorite then
-                                    if table.find(selectedFruits, itemData.ItemName) then
-                                        return uid
-                                    end
-                                end
-                            end
-                        end
-
-                        return nil
                     end
 
                     while autoPetFeedEnabled do
-                        local petList = dropdown_selectPetsForFeed and dropdown_selectPetsForFeed.CurrentOption or {}
-                        local fruitList = dropdown_selectedFruitForAutoFeed and dropdown_selectedFruitForAutoFeed.CurrentOption or {}
-                        local hungerLimit = tonumber((input_autoFeedPercentage.CurrentValue or ""):match("%d+"))
-                        local targetHunger = tonumber((input_autoFeedUntilPercentage.CurrentValue or ""):match("%d+")) or 100
+                        local petList = dropdown_selectPetsForFeed.CurrentOption or {}
+                        local fruitList = dropdown_selectedFruitForAutoFeed.CurrentOption or {}
+                        local hungerLimit = tonumber(input_autoFeedPercentage.CurrentValue) or 25
+                        local targetHunger = tonumber(input_autoFeedUntilPercentage.CurrentValue) or 100
 
-                        if targetHunger >= 100 then
-                            targetHunger = 99
-                        end
-
-                        if not hungerLimit or hungerLimit <= 0 or hungerLimit >= 100 then
-                            task.wait(1)
-                            continue
-                        end
-
-                        if #petList == 0 or #fruitList == 0 then
-                            task.wait(1)
-                            continue
-                        end
-
-                        local playerData = getPlayerData()
-                        if not playerData then
-                            task.wait(1)
-                            continue
-                        end
-
-                        for _, pet in ipairs(petList) do
-                            if not autoPetFeedEnabled then
-                                break
-                            end
-
-                            local petId = (pet:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
-                            if petId == "" then
-                                continue
-                            end
-
-                            local hungerPercent = getPetHungerPercent(petId)
-                            if not hungerPercent then
-                                continue
-                            end
-
-                            if hungerPercent <= hungerLimit then
-                                while hungerPercent < targetHunger and autoPetFeedEnabled do
-                                    local fruitUid = getFeedFruitUid(playerData, fruitList)
-                                    if fruitUid then
-                                        -- equip fruit
-                                        game:GetService("ReplicatedStorage").GameEvents.InventoryService:FireServer("EquipItem", fruitUid)
-                                        task.wait()
-                                        ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
-                                        task.wait(0.2)
-                                    else
-                                        break
+                        if #petList > 0 and #fruitList > 0 then
+                            local playerData = getPlayerData()
+                            for _, pet in ipairs(petList) do
+                                local petId = (pet:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
+                                local pData = playerData.PetsData.PetInventory.Data[petId]
+                                if pData then
+                                    local defHunger = petDefaultHunger[pData.PetType]
+                                    if defHunger then
+                                        local hungerPct = (pData.PetData.Hunger / defHunger) * 100
+                                        if hungerPct <= hungerLimit then
+                                            while hungerPct < targetHunger and autoPetFeedEnabled do
+                                                local fruitUid = nil
+                                                for uid, item in pairs(playerData.InventoryData) do
+                                                    if item.ItemType == "Holdable" and table.find(fruitList, item.ItemData.ItemName) then
+                                                        fruitUid = uid
+                                                        break
+                                                    end
+                                                end
+                                                if fruitUid then
+                                                    ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
+                                                    task.wait(0.2)
+                                                    playerData = getPlayerData()
+                                                    pData = playerData.PetsData.PetInventory.Data[petId]
+                                                    hungerPct = (pData.PetData.Hunger / defHunger) * 100
+                                                else
+                                                    break
+                                                end
+                                            end
+                                        end
                                     end
-                                    hungerPercent = getPetHungerPercent(petId)
                                 end
                             end
                         end
-
                         task.wait(2)
                     end
-
                     autoPetFeedThread = nil
                 end)
-            else
-                autoPetFeedEnabled = false
-                autoPetFeedThread = nil
-                beastHubNotify("Auto pet feed disabled", "", 3)
             end
         end,
     })
 
-
-
-
-
-
-
-
     Automation:CreateDivider()
+
+    -- CUSTOM
+
+    -- END
+end
 
 local function antiAFK()
     -- Prevent multiple connections
