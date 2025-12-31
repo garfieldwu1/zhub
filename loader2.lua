@@ -1027,7 +1027,7 @@ local function autoSellPets(targetPets, weightTargetBelow, onComplete)
                 task.wait(0.2) -- ensure pet equips before selling
                 SellPet_RE:FireServer(item.Name)
                 print("Sold:", item.Name)
-                task.wait(0.2)
+                task.wait(0.1)
             end
         end
     end
