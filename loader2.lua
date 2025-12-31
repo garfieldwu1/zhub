@@ -5164,13 +5164,26 @@ Event:CreateButton({
     Automation:CreateDivider()
 
     Automation:CreateSection("Auto Feed")
+    local parag_petsToFeed = Automation:CreateParagraph({
+        Title = "Pet/s to feed:",
+        Content = "None"
+    })
     local dropdown_selectPetsForFeed = Automation:CreateDropdown({
         Name = "Select Pet/s",
         Options = {},
         CurrentOption = {},
         MultipleOptions = true,
         Flag = "selectPetsForFeed", 
-        Callback = function(Options) end,
+        Callback = function(Options)
+            parag_petsToFeed:Set({Title = "Selected Pets", Content = table.concat(Options, ", ")})
+        end,
+    })
+    Automation:CreateButton({
+        Name = "Clear Selected",
+        Callback = function()
+            dropdown_selectPetsForFeed:Set({})
+            parag_petsToFeed:Set({Title = "Selected Pets", Content = "None"})
+        end,
     })
     Automation:CreateButton({
         Name = "Refresh list",
