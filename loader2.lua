@@ -5255,7 +5255,7 @@ Event:CreateButton({
             })
         end,
     })
-    
+
     local input_autoFeedPercentage = Automation:CreateInput({
         Name = "Auto feed when Hunger % is:",
         CurrentValue = "25",
@@ -5347,7 +5347,9 @@ Event:CreateButton({
                 end
 
                 local okRegistry, PetRegistry = pcall(function()
-                    return require(ReplicatedStorage.Data.PetRegistry.PetList)
+                    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                    local PetRegistryModule = require(ReplicatedStorage.Data.PetRegistry)
+                    return PetRegistryModule.PetList or PetRegistryModule
                 end)
 
                 if not okRegistry or type(PetRegistry) ~= "table" then
@@ -5370,7 +5372,7 @@ Event:CreateButton({
                         local petInventory = playerData
                             and playerData.PetsData
                             and playerData.PetsData.PetInventory
-                            and playerData.PetsData.PetInventory.Data
+                            and (playerData.PetsData.PetInventory.Data or playerData.PetsData.PetInventory)
 
                         if not petInventory then return nil end
 
@@ -5454,20 +5456,21 @@ Event:CreateButton({
 
                             if hungerPercent <= hungerLimit then
                                 while hungerPercent < targetHunger and autoPetFeedEnabled do
-                                    local fruitUid = getFeedFruitUid(playerData, fruitList)
+                                    local currentPlayerData = getPlayerData() -- Refresh data inside loop
+                                    local fruitUid = getFeedFruitUid(currentPlayerData, fruitList)
                                     if fruitUid then
-                                    local function equipFruitById(uid)
+                                        local function equipFruitById(uid)
                                             local ReplicatedStorage = game:GetService("ReplicatedStorage")
                                             ReplicatedStorage.GameEvents.InventoryService:FireServer("EquipItem", uid)
                                         end
                                         equipFruitById(fruitUid)
-                                        task.wait()
-                                        ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
-                                        task.wait(0.2)
+                                        task.wait(0.1)
+                                        game:GetService("ReplicatedStorage").GameEvents.ActivePetService:FireServer("Feed", petId)
+                                        task.wait(0.3)
                                     else
                                         break
                                     end
-                                    hungerPercent = getPetHungerPercent(petId)
+                                    hungerPercent = getPetHungerPercent(petId) or 100
                                 end
                             end
                         end
