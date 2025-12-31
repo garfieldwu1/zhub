@@ -5163,45 +5163,97 @@ Event:CreateButton({
     })
     Automation:CreateDivider()
 
+     --Auto feed
     Automation:CreateSection("Auto Feed")
+    local parag_petsToFeed = Automation:CreateParagraph({
+        Title = "Pet/s to feed:",
+        Content = "None"
+    })
     local dropdown_selectPetsForFeed = Automation:CreateDropdown({
         Name = "Select Pet/s",
         Options = {},
         CurrentOption = {},
         MultipleOptions = true,
         Flag = "selectPetsForFeed", 
-        Callback = function(Options) end,
+        Callback = function(Options)
+            local listText = table.concat(Options, ", ")
+            if listText == "" then
+                listText = "None"
+            end
+
+            parag_petsToFeed:Set({
+                Title = "Pet/s to feed:",
+                Content = listText
+            })
+        end,
+
     })
+
     Automation:CreateButton({
         Name = "Refresh list",
         Callback = function()
             local function getPlayerData()
                 local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
-                return dataService:GetData()
+                local logs = dataService:GetData()
+                return logs
             end
+
             local function equippedPets()
                 local playerData = getPlayerData()
-                if not playerData.PetsData then return nil end
-                return playerData.PetsData.EquippedPets
+                if not playerData.PetsData then
+                    warn("PetsData missing")
+                    return nil
+                end
+
+                local tempStorage = playerData.PetsData.EquippedPets
+                if not tempStorage or type(tempStorage) ~= "table" then
+                    warn("EquippedPets missing or invalid")
+                    return nil
+                end
+
+                local petIdsList = {}
+                for _, id in ipairs(tempStorage) do
+                    table.insert(petIdsList, id)
+                end
+
+                return petIdsList
             end
+
             local function getPetNameUsingId(uid)
                 local playerData = getPlayerData()
                 if playerData.PetsData.PetInventory.Data then
-                    local petData = playerData.PetsData.PetInventory.Data[uid]
-                    if petData then
-                        return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
+                    local data = playerData.PetsData.PetInventory.Data
+                    for id,petData in pairs(data) do
+                        if id == uid then
+                            return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
+                        end
                     end
                 end
             end
+
             local equipped = equippedPets()
             local namesToId = {}
-            if equipped then
-                for _,id in ipairs(equipped) do
-                    local petName = getPetNameUsingId(id)
-                    table.insert(namesToId, petName.." | "..id)
-                end
+            for _,id in ipairs(equipped) do
+                local petName = getPetNameUsingId(id)
+                table.insert(namesToId, petName.." | "..id)
             end
-            dropdown_selectPetsForFeed:Refresh(namesToId)
+
+            if equipped and #equipped > 0 then
+                dropdown_selectPetsForFeed:Refresh(namesToId)
+            else
+                beastHubNotify("equipped pets error", "", 3)
+            end
+        end,
+    })
+
+    Automation:CreateButton({
+        Name = "Clear Selected",
+        Callback = function()
+            dropdown_selectPetsForFeed:Set({})
+            parag_petsToFeed:Set({
+                Title = "Pet/s to feed:",
+                Content = "None"
+            })
         end,
     })
 
@@ -5211,7 +5263,8 @@ Event:CreateButton({
         PlaceholderText = "number",
         RemoveTextAfterFocusLost = false,
         Flag = "autoFeedPercentage",
-        Callback = function(Text) end,
+        Callback = function(Text)
+        end,
     })
 
     local input_autoFeedUntilPercentage = Automation:CreateInput({
@@ -5220,20 +5273,59 @@ Event:CreateButton({
         PlaceholderText = "number",
         RemoveTextAfterFocusLost = false,
         Flag = "autoFeedUntilPercentage",
-        Callback = function(Text) end,
+        Callback = function(Text)
+        end,
     })
 
+    local selectedFruitsForAutoFeed
     local dropdown_selectedFruitForAutoFeed = Automation:CreateDropdown({
         Name = "Select Fruit",
-        Options = seedNames,
+        Options = allSeedsOnly,
         CurrentOption = {},
         MultipleOptions = true,
-        Flag = "selectedFruit_autoFeed",
-        Callback = function(Options) end,
+        Flag = "selectedFruit_autoFeed", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+        Callback = function(Options)
+            selectedFruitsForAutoFeed = Options
+        end,
+    })
+    local searchDebounce_seedForFeed = nil
+    Automation:CreateInput({
+        Name = "Search fruit",
+        PlaceholderText = "fruit",
+        RemoveTextAfterFocusLost = false,
+        Callback = function(Text)
+            if searchDebounce_seedForFeed then
+                task.cancel(searchDebounce_seedForFeed)
+            end
+            searchDebounce_seedForFeed = task.delay(0.5, function()
+                local results = {}
+                local query = string.lower(Text)
+
+                if query == "" then
+                    results = allSeedsOnly
+                else
+                    for _, fruitName in ipairs(allSeedsOnly) do
+                        if string.find(string.lower(fruitName), query, 1, true) then
+                            table.insert(results, fruitName)
+                        end
+                    end
+                end
+                dropdown_selectedFruitForAutoFeed:Refresh(results)
+                dropdown_selectedFruitForAutoFeed:Set(selectedFruitsForAutoFeed) --set to current selected
+
+            end)
+        end,
+    })
+    Automation:CreateButton({
+        Name = "Clear fruit",
+        Callback = function()
+            dropdown_selectedFruitForAutoFeed:Set({})
+        end,
     })
 
     local autoPetFeedEnabled = false
     local autoPetFeedThread = nil
+
     Automation:CreateToggle({
         Name = "Auto Feed",
         CurrentValue = false,
@@ -5365,9 +5457,8 @@ Event:CreateButton({
                                 while hungerPercent < targetHunger and autoPetFeedEnabled do
                                     local fruitUid = getFeedFruitUid(playerData, fruitList)
                                     if fruitUid then
-                                                            local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                                                            ReplicatedStorage.GameEvents.InventoryService:FireServer("EquipItem", fruitUid)
-                                                            task.wait(0.1)
+                                        equipFruitById(fruitUid)
+                                        task.wait()
                                         ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
                                         task.wait(0.2)
                                     else
@@ -5391,12 +5482,14 @@ Event:CreateButton({
         end,
     })
 
+
+
+
+
+
+
+
     Automation:CreateDivider()
-
-    -- CUSTOM
-
-    -- END
-end
 
 local function antiAFK()
     -- Prevent multiple connections
@@ -5428,5 +5521,4 @@ if success then
     print("Config file loaded")
 else
     print("Error loading config file "..err)
---5434
 end
