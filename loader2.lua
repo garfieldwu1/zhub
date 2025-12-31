@@ -5243,7 +5243,7 @@ Event:CreateButton({
 
             if autoPetFeedEnabled then
                 if autoPetFeedThread then
-                    return
+                    task.cancel(autoPetFeedThread)
                 end
 
                 beastHubNotify("Auto pet feed running", "", 3)
@@ -5365,12 +5365,16 @@ Event:CreateButton({
                                 while hungerPercent < targetHunger and autoPetFeedEnabled do
                                     local fruitUid = getFeedFruitUid(playerData, fruitList)
                                     if fruitUid then
-                                    local function equipFruitById(uid)
+                                        local function equipFruitById(uid)
                                             local ReplicatedStorage = game:GetService("ReplicatedStorage")
                                             ReplicatedStorage.GameEvents.InventoryService:FireServer("EquipItem", uid)
                                         end
+                                        -- Equip the fruit
                                         equipFruitById(fruitUid)
-                                        task.wait()
+                                        task.wait(0.1) -- Small wait for equipment to register
+                                        
+                                        -- Feed the pet
+                                        local ReplicatedStorage = game:GetService("ReplicatedStorage")
                                         ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
                                         task.wait(0.2)
                                     else
@@ -5383,12 +5387,12 @@ Event:CreateButton({
 
                         task.wait(2)
                     end
-
-                    autoPetFeedThread = nil
                 end)
             else
-                autoPetFeedEnabled = false
-                autoPetFeedThread = nil
+                if autoPetFeedThread then
+                    task.cancel(autoPetFeedThread)
+                    autoPetFeedThread = nil
+                end
                 beastHubNotify("Auto pet feed disabled", "", 3)
             end
         end,
