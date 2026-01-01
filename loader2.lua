@@ -5257,46 +5257,49 @@ Event:CreateButton({
                     end
 
                     while autoPetFeedEnabled do
-    local playerData = getPlayerData()
-    local pData = playerData.PetsData.PetInventory.Data[petId]
-    local defHunger = petDefaultHunger[pData.PetType]
-    local hungerPct = (pData.PetData.Hunger / defHunger) * 100
+                        local petList = dropdown_selectPetsForFeed.CurrentOption or {}
+                        local fruitList = dropdown_selectedFruitForAutoFeed.CurrentOption or {}
+                        local hungerLimit = tonumber(input_autoFeedPercentage.CurrentValue) or 25
+                        local targetHunger = tonumber(input_autoFeedUntilPercentage.CurrentValue) or 100
 
-    -- ONLY feed if hunger is BELOW or EQUAL to hungerLimit
-    if hungerPct <= 0 then
-        while hungerPct < targetHunger and autoPetFeedEnabled do
-            local fruitUid = nil
-            for uid, item in pairs(playerData.InventoryData) do
-                if item.ItemType == "Holdable" and table.find(fruitList, item.ItemData.ItemName) then
-                    fruitUid = uid
-                    break
-                end
-            end
-
-            if fruitUid then
-                -- HOLD THE FRUIT BEFORE FEEDING
-                ReplicatedStorage.GameEvents.InventoryService:FireServer("Equip", fruitUid)
-               -- task.wait(0.15)
-
-                -- FEED PET
-                ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
-                task.wait(0.2)
-
-                -- UPDATE HUNGER
-                playerData = getPlayerData()
-                pData = playerData.PetsData.PetInventory.Data[petId]
-                hungerPct = (pData.PetData.Hunger / defHunger) * 100
-            else
-                -- No fruit found → stop feeding
-                break
-            end
-        end
-    else
-        -- Hunger above limit → skip feeding, wait and check again
-        task.wait(2)
-    end
-end
-
+                        if #petList > 0 and #fruitList > 0 then
+                            local playerData = getPlayerData()
+                            for _, pet in ipairs(petList) do
+                                local petId = (pet:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
+                                local pData = playerData.PetsData.PetInventory.Data[petId]
+                                if pData then
+                                    local defHunger = petDefaultHunger[pData.PetType]
+                                    if defHunger then
+                                        local hungerPct = (pData.PetData.Hunger / defHunger) * 100
+                                        if hungerPct <= 0 then
+                                            while hungerPct < targetHunger and autoPetFeedEnabled do
+                                                local fruitUid = nil
+                                                for uid, item in pairs(playerData.InventoryData) do
+                                                    if item.ItemType == "Holdable" and table.find(fruitList, item.ItemData.ItemName) then
+                                                        fruitUid = uid
+                                                        break
+                                                    end
+                                                end
+                                                if fruitUid then
+                                                    ReplicatedStorage.GameEvents.InventoryService:FireServer("Equip", fruitUid)
+                         
+                         task.wait(0.1)                       
+                                                    ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
+                                                    task.wait(0.2)
+                                                    playerData = getPlayerData()
+                                                    pData = playerData.PetsData.PetInventory.Data[petId]
+                                                    hungerPct = (pData.PetData.Hunger / defHunger) * 100
+                                                else
+                                                    break
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        task.wait(2)
+                    end
                     autoPetFeedThread = nil
                 end)
             end
