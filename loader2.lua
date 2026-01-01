@@ -43,7 +43,7 @@ if not getgenv().BeastHubFunctions then
 end
 local myFunctions = getgenv().BeastHubFunctions
 -- Create Luck GUI for playtime luck
-local luckGUI = myFunctions.createLuckGUI()
+-- local luckGUI = myFunctions.createLuckGUI()
 
 -- ================== MAIN ==================
 local Window = Rayfield:CreateWindow({
