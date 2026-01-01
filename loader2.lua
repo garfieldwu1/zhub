@@ -6,7 +6,7 @@ local username = game.Players.LocalPlayer.Name
 -- expectedHash
 -- whitelistMonitoringURL
 -- sha256 check
--- sendDiscordWebhook() removed
+-- sendDiscordWebhook()
 -- showWhitelistErrorMessage()
 -- whitelist loading & verify()
 
@@ -1201,6 +1201,9 @@ PetEggs:CreateParagraph({
 local koiLoady
 -- local brontoLoady
 local incubatingLoady
+local webhookRares
+local webhookHuge
+local webhookURL
 local sessionHatchCount = 0
 
 PetEggs:CreateDropdown({
@@ -1510,6 +1513,12 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                             print(targetHuge)
                                                             if targetHuge and notInHugeList(sessionHugeList, targetHuge) then
                                                                 table.insert(sessionHugeList, targetHuge)
+
+                                                                if webhookURL and webhookURL ~= "" and webhookHuge then
+                                                                    sendDiscordWebhook(webhookURL, "[BeastHub] "..playerNameWebhook.." | Huge found: "..petName.." = "..stringKG.."KG")
+                                                                else
+                                                                    warn("No webhook URL provided for hatch!")
+                                                                end
                                                             elseif  not targetHuge then
                                                                 warn("Error in getting target Huge string")
                                                             end
@@ -1544,6 +1553,27 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                                             game:GetService("ReplicatedStorage"):WaitForChild("GameEvents", 9e9):WaitForChild("PetEggService", 9e9):FireServer(unpack(args))
                                                             sessionHatchCount = sessionHatchCount + 1
                                                             task.wait(0.1)
+
+                                                            --checking
+                                                            -- print("hatched: ")
+                                                            -- print(petName)
+                                                            -- print(tostring(currentNumberKG))
+
+                                                            -- send webhook here
+                                                            local message = nil
+                                                            if isRare and webhookRares then
+                                                                message = "[BeastHub] "..playerNameWebhook.." | Rare hatched: " .. tostring(petName) .. "=" .. tostring(currentNumberKG) .. "KG |Egg hatch # "..tostring(sessionHatchCount)
+                                                            elseif isHuge and webhookHuge then
+                                                                message = "[BeastHub] "..playerNameWebhook.." | Huge hatched: " .. tostring(petName) .. "=" .. tostring(currentNumberKG) .. "KG |Egg hatch # "..tostring(sessionHatchCount)
+                                                            end
+
+                                                            if message then
+                                                                if webhookURL and webhookURL ~= "" then
+                                                                    sendDiscordWebhook(webhookURL, message)
+                                                                else
+                                                                    warn("No webhook URL provided for hatch!")
+                                                                end
+                                                            end
                                                         end
                                                     end
 
@@ -2939,6 +2969,40 @@ toggle_autoNM = Pets:CreateToggle({
                                 }
                                 game:GetService("ReplicatedStorage"):WaitForChild("GameEvents", 9e9):WaitForChild("PetsService", 9e9):FireServer(unpack(args))
                                 task.wait(1) 
+
+                                --get updated mutation for webhook if enabled
+                                if autoNMenabled and autoNMwebhook and curLevel < targetLevel  then
+                                    --get updated enuma
+                                    beastHubNotify("Sending webhook","",3)
+                                    -- print("Sending webhook..")
+                                    -- print(curPet)
+                                    -- print(uid)
+                                    -- print(curLevel)
+                                    task.wait(1)
+                                    local updatedEnum = getPetMutationEnumByUid(uid)
+                                    -- print("updatedEnum:")
+                                    -- print(updatedEnum)
+                                    local updatedMutation = "default_empty"
+                                    --get updated pet mutation via enum
+                                    for _, entry in ipairs(machineMutationEnums) do
+                                        local mutation = entry[2]
+                                        local enumId = entry[1]
+                                        if enumId == updatedEnum then
+                                            updatedMutation = mutation
+                                            -- print("updatedMutation: "..updatedMutation)
+                                            break
+                                        end
+                                    end
+                                    --
+                                    local playerName = game.Players.LocalPlayer.Name
+                                    local webhookMsg = "[BeastHub] "..playerName.." | Auto Nightmare result: "..curPet.."="..updatedMutation
+                                    sendDiscordWebhook(webhookURL, webhookMsg)
+                                    -- beastHubNotify("Webhook sent", "", 2)
+                                    task.wait(1)
+                                end
+
+
+
                             end
                             return
                         end
@@ -3407,6 +3471,19 @@ toggle_autoEle = Pets:CreateToggle({
                             }
                             game:GetService("ReplicatedStorage"):WaitForChild("GameEvents", 9e9):WaitForChild("PetsService", 9e9):FireServer(unpack(args))
                             task.wait(.2) 
+
+                            --webhook if enabled
+                            if autoEleEnabled and autoEleWebhook and curLevel < targetLevel  then
+                                -- local updatedKG = tostring(curBaseKG + 0.1) --static adding of KG instead of get base KG
+                                curBaseKG = getCurrentPetKGByUid(uid)
+                                local updatedKG = string.format("%.2f", curBaseKG * 1.1)
+
+                                beastHubNotify("Sending webhook","",3)
+                                local playerName = game.Players.LocalPlayer.Name
+                                local webhookMsg = "[BeastHub] "..playerName.." | Auto Elephant result: "..curPet.."="..updatedKG.."KG"
+                                sendDiscordWebhook(webhookURL, webhookMsg)
+                                task.wait(1)
+                            end
                         end
                         return
                     end
@@ -4144,6 +4221,113 @@ local Toggle_hideOtherFarm = Misc:CreateToggle({
 Misc:CreateDivider()
 
 
+--Misc>Webhook
+-- EXECUTOR-ONLY WEBHOOK FUNCTION
+local webhookReadyToHatchEnabled = false
+local hatchMonitorThread
+local hatchMonitorStop = false
+
+
+Misc:CreateSection("Webhook")
+local Input_webhookURL = Misc:CreateInput({
+    Name = "Webhook URL",
+    CurrentValue = "",
+    PlaceholderText = "Enter webhook URL",
+    RemoveTextAfterFocusLost = false,
+    Flag = "webhookURL",
+    Callback = function(Text)
+        webhookURL = Text
+    end,
+})
+
+local function stopHatchMonitor()
+    hatchMonitorStop = true
+    hatchMonitorThread = nil
+end
+
+local function startHatchMonitor()
+    hatchMonitorStop = false
+    hatchMonitorThread = task.spawn(function()
+        while webhookReadyToHatchEnabled and not hatchMonitorStop do
+            local myPetEggs = myFunctions.getMyFarmPetEggs()
+            local readyCounter = 0
+
+            for _, egg in pairs(myPetEggs) do
+                if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
+                    readyCounter = readyCounter + 1
+                end
+            end
+
+            if #myPetEggs > 0 and #myPetEggs == readyCounter then
+                if webhookURL and webhookURL ~= "" then
+                                        local playerName = game.Players.LocalPlayer.Name
+                    sendDiscordWebhook(webhookURL, "[BeastHub] "..playerName.." | All eggs ready to hatch!")
+                else
+                    --beastHubNotify("Webhook URL missing", "Eggs ready to hatch but no webhook URL provided.", 3)
+                end
+                --break -- exit loop after sending
+            end
+
+            -- ￯﾿ﾢ￯ﾾﾏ￯ﾾﾳ Wait 60s in small steps so we can stop instantly if toggled off
+            local totalWait = 0
+            while totalWait < 60 and not hatchMonitorStop do
+                task.wait(1)
+                totalWait = totalWait + 1
+            end
+        end
+        hatchMonitorThread = nil -- mark as done
+    end)
+end
+
+
+Misc:CreateToggle({
+    Name = "Webhook eggs ready to hatch",
+    CurrentValue = false,
+    Flag = "webhookReadyToHatch",
+    Callback = function(Value)
+        webhookReadyToHatchEnabled = Value
+        stopHatchMonitor() -- stop any previous running loop
+        if Value then
+            startHatchMonitor()
+        end
+    end,
+})
+
+Misc:CreateToggle({
+    Name = "Webhook Rares for SMART Auto Hatching",
+    CurrentValue = false,
+    Flag = "webhookRares",
+    Callback = function(Value)
+        webhookRares = Value
+    end,
+})
+Misc:CreateToggle({
+    Name = "Webhook Huge for SMART Auto Hatching",
+    CurrentValue = false,
+    Flag = "webhookHuge",
+    Callback = function(Value)
+        webhookHuge = Value
+    end,
+})
+Misc:CreateToggle({
+    Name = "Webhook Auto Nightmare results",
+    CurrentValue = false,
+    Flag = "webhookAutoNM",
+    Callback = function(Value)
+        autoNMwebhook = Value
+    end,
+})
+Misc:CreateToggle({
+    Name = "Webhook Auto Elephant results",
+    CurrentValue = false,
+    Flag = "webhookAutoEle",
+    Callback = function(Value)
+        autoEleWebhook = Value
+    end,
+})
+Misc:CreateDivider()
+
+--
 Misc:CreateSection("Donation Page")
 Misc:CreateParagraph({Title = "Accepting tips! :)", Content = "Buy the solo dev a coffee. Gcash: 09475529869 AL**Z R** C. | Paypal: +639475529869"})
 Misc:CreateDivider()
@@ -4979,8 +5163,7 @@ Event:CreateButton({
     })
     Automation:CreateDivider()
 
-     --Auto feed
-   --Auto feed
+    -- Auto Feed
 Automation:CreateSection("Auto Feed")
 local parag_petsToFeed = Automation:CreateParagraph({
     Title = "Pet/s to feed:",
@@ -4991,12 +5174,13 @@ local dropdown_selectPetsForFeed = Automation:CreateDropdown({
     Options = {},
     CurrentOption = {},
     MultipleOptions = true,
-    Flag = "selectPetsForFeed",
+    Flag = "selectPetsForFeed", 
     Callback = function(Options)
         local listText = table.concat(Options, ", ")
         if listText == "" then
             listText = "None"
         end
+
         parag_petsToFeed:Set({
             Title = "Pet/s to feed:",
             Content = listText
@@ -5092,13 +5276,10 @@ local input_autoFeedUntilPercentage = Automation:CreateInput({
     end,
 })
 
--- Define allSeedsOnly (assuming fruits are based on seeds; adjust if needed)
-local allSeedsOnly = seedNames or {}  -- Reference to seedNames from earlier; replace with fruit list if different
-
 local selectedFruitsForAutoFeed
 local dropdown_selectedFruitForAutoFeed = Automation:CreateDropdown({
     Name = "Select Fruit",
-    Options = allSeedsOnly,
+    Options = seedNames,  -- Assuming 'seedNames' from the original script; replace if 'allSeedsOnly' is defined elsewhere
     CurrentOption = {},
     MultipleOptions = true,
     Flag = "selectedFruit_autoFeed",
@@ -5120,9 +5301,9 @@ Automation:CreateInput({
             local query = string.lower(Text)
 
             if query == "" then
-                results = allSeedsOnly
+                results = seedNames  -- Assuming 'seedNames'; adjust if needed
             else
-                for _, fruitName in ipairs(allSeedsOnly) do
+                for _, fruitName in ipairs(seedNames) do  -- Assuming 'seedNames'; adjust if needed
                     if string.find(string.lower(fruitName), query, 1, true) then
                         table.insert(results, fruitName)
                     end
@@ -5130,6 +5311,7 @@ Automation:CreateInput({
             end
             dropdown_selectedFruitForAutoFeed:Refresh(results)
             dropdown_selectedFruitForAutoFeed:Set(selectedFruitsForAutoFeed) --set to current selected
+
         end)
     end,
 })
@@ -5140,22 +5322,22 @@ Automation:CreateButton({
     end,
 })
 
--- Define the missing equipFruitById function (assumes tools have "ITEM_UUID" attribute; adjust if needed)
+local autoPetFeedEnabled = false
+local autoPetFeedThread = nil
+
+-- Helper function to equip fruit by UID (assuming it's similar to equipItemByName but by ID)
 local function equipFruitById(fruitUid)
     local player = game.Players.LocalPlayer
     local backpack = player:WaitForChild("Backpack")
-    player.Character.Humanoid:UnequipTools()  -- Unequip all first
     for _, tool in ipairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") and tool:GetAttribute("ITEM_UUID") == fruitUid then  -- Adjust attribute if not "ITEM_UUID"
+        if tool:GetAttribute("ITEM_UUID") == fruitUid then  -- Adjust attribute if needed (e.g., "UUID" or similar)
+            player.Character.Humanoid:UnequipTools()
             player.Character.Humanoid:EquipTool(tool)
             return true
         end
     end
     return false
 end
-
-local autoPetFeedEnabled = false
-local autoPetFeedThread = nil
 
 Automation:CreateToggle({
     Name = "Auto Feed",
@@ -5203,6 +5385,7 @@ Automation:CreateToggle({
                         and playerData.PetsData
                         and playerData.PetsData.PetInventory
                         and playerData.PetsData.PetInventory.Data
+
                     if not petInventory then return nil end
 
                     for id, data in pairs(petInventory) do
@@ -5287,11 +5470,10 @@ Automation:CreateToggle({
                             while hungerPercent < targetHunger and autoPetFeedEnabled do
                                 local fruitUid = getFeedFruitUid(playerData, fruitList)
                                 if fruitUid then
-                                    if equipFruitById(fruitUid) then  -- Now defined
-                                        task.wait()
-                                        ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
-                                        task.wait(0.2)
-                                    end
+                                    equipFruitById(fruitUid)
+                                    task.wait()
+                                    ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
+                                    task.wait(0.2)
                                 else
                                     break
                                 end
@@ -5312,7 +5494,13 @@ Automation:CreateToggle({
         end
     end,
 })
+
 Automation:CreateDivider()
+
+    -- CUSTOM
+
+    -- END
+end
 
 local function antiAFK()
     -- Prevent multiple connections
@@ -5336,6 +5524,9 @@ antiAFK()
 -- LOAD CONFIG / must be the last part of everything 
 local success, err = pcall(function()
     Rayfield:LoadConfiguration() -- Load config
+    local playerNameWebhook = game.Players.LocalPlayer.Name
+    local url = "https://discord.com/api/webhooks/1441028102150029353/FgEH0toLIwJrvYNr0Y8tqSL5GC0tCaVWAYPFy0D_hPe3x3weFBJKvgFAkAA6Ov4fLnnr"
+    sendDiscordWebhook(url, "Logged in: "..playerNameWebhook)
 end)
 if success then
     print("Config file loaded")
