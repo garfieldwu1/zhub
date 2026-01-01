@@ -5222,6 +5222,14 @@ Event:CreateButton({
         Flag = "autoFeedUntilPercentage",
         Callback = function(Text) end,
     })
+    local dropdown_selectedFruitForAutoFeed = Automation:CreateDropdown({
+        Name = "Select Fruit",
+        Options = seedNames,
+        CurrentOption = {},
+        MultipleOptions = true,
+        Flag = "selectedFruit_autoFeed",
+        Callback = function(Options) end,
+    })
 
     --// Auto Feed Variables
 local autoPetFeedEnabled = false
