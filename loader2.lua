@@ -5330,6 +5330,7 @@ Automation:CreateToggle({
 
 Automation:CreateDivider()
 
+end 
 
 local function antiAFK()
     -- Prevent multiple connections
