@@ -5225,7 +5225,7 @@ Event:CreateButton({
 
     local dropdown_selectedFruitForAutoFeed = Automation:CreateDropdown({
         Name = "Select Fruit",
-        Options = seedNames,
+        Options = fruitNames,
         CurrentOption = {},
         MultipleOptions = true,
         Flag = "selectedFruit_autoFeed",
