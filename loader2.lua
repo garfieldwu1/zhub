@@ -5163,55 +5163,56 @@ Event:CreateButton({
     })
     Automation:CreateDivider()
 
-   Automation:CreateSection("Auto Feed")
+    Automation:CreateSection("Auto Feed")
 
--- PET DROPDOWN
 local dropdown_selectPetsForFeed = Automation:CreateDropdown({
     Name = "Select Pet/s",
     Options = {},
     CurrentOption = {},
     MultipleOptions = true,
-    Flag = "selectPetsForFeed",
-    Callback = function() end,
+    Flag = "selectPetsForFeed", 
+    Callback = function(Options) end,
 })
 
--- REFRESH PET LIST
 Automation:CreateButton({
     Name = "Refresh list",
     Callback = function()
         local function getPlayerData()
             return require(game:GetService("ReplicatedStorage").Modules.DataService):GetData()
         end
-
-        local playerData = getPlayerData()
-        local equipped = playerData.PetsData and playerData.PetsData.EquippedPets
-        if not equipped then return end
-
-        local list = {}
-        for _, petId in ipairs(equipped) do
-            local pet = playerData.PetsData.PetInventory.Data[petId]
-            if pet then
-                table.insert(list,
-                    pet.PetType ..
-                    " > " .. pet.PetData.Name ..
-                    " > " .. string.format("%.2f", pet.PetData.BaseWeight * 1.1) ..
-                    "kg | " .. petId
-                )
+        local function equippedPets()
+            local playerData = getPlayerData()
+            if not playerData.PetsData then return nil end
+            return playerData.PetsData.EquippedPets
+        end
+        local function getPetNameUsingId(uid)
+            local playerData = getPlayerData()
+            if playerData.PetsData.PetInventory.Data then
+                local petData = playerData.PetsData.PetInventory.Data[uid]
+                if petData then
+                    return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
+                end
             end
         end
-
-        dropdown_selectPetsForFeed:Refresh(list)
+        local equipped = equippedPets()
+        local namesToId = {}
+        if equipped then
+            for _,id in ipairs(equipped) do
+                local petName = getPetNameUsingId(id)
+                table.insert(namesToId, petName.." | "..id)
+            end
+        end
+        dropdown_selectPetsForFeed:Refresh(namesToId)
     end,
 })
 
--- HUNGER INPUTS
 local input_autoFeedPercentage = Automation:CreateInput({
     Name = "Auto feed when Hunger % is:",
     CurrentValue = "25",
     PlaceholderText = "number",
     RemoveTextAfterFocusLost = false,
     Flag = "autoFeedPercentage",
-    Callback = function() end,
+    Callback = function(Text) end,
 })
 
 local input_autoFeedUntilPercentage = Automation:CreateInput({
@@ -5220,20 +5221,18 @@ local input_autoFeedUntilPercentage = Automation:CreateInput({
     PlaceholderText = "number",
     RemoveTextAfterFocusLost = false,
     Flag = "autoFeedUntilPercentage",
-    Callback = function() end,
+    Callback = function(Text) end,
 })
 
--- FRUIT DROPDOWN
 local dropdown_selectedFruitForAutoFeed = Automation:CreateDropdown({
     Name = "Select Fruit",
     Options = seedNames,
     CurrentOption = {},
     MultipleOptions = true,
     Flag = "selectedFruit_autoFeed",
-    Callback = function() end,
+    Callback = function(Options) end,
 })
 
--- AUTO FEED TOGGLE
 local autoPetFeedEnabled = false
 local autoPetFeedThread = nil
 
@@ -5253,7 +5252,7 @@ Automation:CreateToggle({
             local DataService = require(ReplicatedStorage.Modules.DataService)
             local PetRegistry = require(ReplicatedStorage.Data.PetRegistry.PetList)
 
-            -- DEFAULT HUNGER TABLE
+            -- Prepare default hunger table
             local petDefaultHunger = {}
             for petName, data in pairs(PetRegistry) do
                 if type(data) == "table" and data.DefaultHunger then
@@ -5269,9 +5268,6 @@ Automation:CreateToggle({
                 local hungerLimit = tonumber(input_autoFeedPercentage.CurrentValue) or 25
                 local targetHunger = tonumber(input_autoFeedUntilPercentage.CurrentValue) or 100
 
-                hungerLimit = math.clamp(hungerLimit, 1, 100)
-                targetHunger = math.clamp(targetHunger, hungerLimit, 100)
-
                 if #petList > 0 and #fruitList > 0 then
                     local playerData = DataService:GetData()
 
@@ -5283,14 +5279,12 @@ Automation:CreateToggle({
                             if defHunger then
                                 local hungerPct = (pData.PetData.Hunger / defHunger) * 100
 
-                                -- AUTO FEED IF BELOW HUNGER LIMIT
+                                -- Feed only if below hungerLimit
                                 if hungerPct <= hungerLimit then
                                     while hungerPct < targetHunger and autoPetFeedEnabled do
-                                        -- FIND HOLDABLE FRUIT
                                         local fruitUid = nil
                                         for uid, item in pairs(playerData.InventoryData) do
-                                            if item.ItemType == "Holdable"
-                                            and table.find(fruitList, item.ItemData.ItemName) then
+                                            if item.ItemType == "Holdable" and table.find(fruitList, item.ItemData.ItemName) then
                                                 fruitUid = uid
                                                 break
                                             end
@@ -5298,7 +5292,7 @@ Automation:CreateToggle({
 
                                         if not fruitUid then break end
 
-                                        -- AUTO EQUIP THE FRUIT (NEW FEATURE)
+                                        -- AUTO EQUIP fruit from dropdown
                                         if fruitUid ~= lastHeldUid then
                                             ReplicatedStorage.GameEvents.InventoryService:FireServer("Equip", fruitUid)
                                             lastHeldUid = fruitUid
@@ -5309,7 +5303,7 @@ Automation:CreateToggle({
                                         ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
                                         task.wait(0.2)
 
-                                        -- UPDATE HUNGER
+                                        -- UPDATE hungerPct
                                         playerData = DataService:GetData()
                                         pData = playerData.PetsData.PetInventory.Data[petId]
                                         hungerPct = (pData.PetData.Hunger / defHunger) * 100
@@ -5330,7 +5324,11 @@ Automation:CreateToggle({
 
 Automation:CreateDivider()
 
-end 
+
+    -- CUSTOM
+
+    -- END
+end
 
 local function antiAFK()
     -- Prevent multiple connections
