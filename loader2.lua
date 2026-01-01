@@ -1,19 +1,17 @@
 -- security checks (cleaned)
 local username = game.Players.LocalPlayer.Name
 
--- Removed:
--- expectedURL
--- expectedHash
--- whitelistMonitoringURL
--- sha256 check
--- sendDiscordWebhook()
--- showWhitelistErrorMessage()
--- whitelist loading & verify()
-
 -- =============================================================
 -- Load Rayfield **once**
 if not getgenv().BeastHubRayfield then
-    getgenv().BeastHubRayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+    local success, result = pcall(function()
+        return loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+    end)
+    if success then
+        getgenv().BeastHubRayfield = result
+    else
+        warn("Failed to load Rayfield:", result)
+    end
 end
 local Rayfield = getgenv().BeastHubRayfield
 local beastHubIcon = 88823002331312
@@ -39,13 +37,22 @@ getgenv().BeastHubLink = "https://pastebin.com/raw/GjsWnygW"
 
 -- Load my reusable functions
 if not getgenv().BeastHubFunctions then
-    getgenv().BeastHubFunctions = loadstring(game:HttpGet("https://pastebin.com/raw/wEUUnKuv"))()
+    local success, result = pcall(function()
+        return loadstring(game:HttpGet("https://pastebin.com/raw/wEUUnKuv"))()
+    end)
+    if success then
+        getgenv().BeastHubFunctions = result
+    else
+        warn("Failed to load BeastHubFunctions:", result)
+    end
 end
 local myFunctions = getgenv().BeastHubFunctions
 -- Create Luck GUI for playtime luck
-local luckGUI = myFunctions.createLuckGUI()
+local luckGUI = myFunctions and myFunctions.createLuckGUI and myFunctions.createLuckGUI()
 
 -- ================== MAIN ==================
+if not Rayfield then return end
+
 local Window = Rayfield:CreateWindow({
    Name = "BeastHub | Modified By Markdevs",
    Icon = beastHubIcon, --BeastHub logo
@@ -63,16 +70,29 @@ local Window = Rayfield:CreateWindow({
 })
 
 local function beastHubNotify(title, message, duration)
-    Rayfield:Notify({
-        Title = title,
-        Content = message,
-        Duration = duration,
-        Image = beastHubIcon
-    })
+    if Rayfield and Rayfield.Notify then
+        Rayfield:Notify({
+            Title = title,
+            Content = message,
+            Duration = duration,
+            Image = beastHubIcon
+        })
+    else
+        print("[" .. tostring(title) .. "] " .. tostring(message))
+    end
 end
 
-local mainModule = loadstring(game:HttpGet("https://pastebin.com/raw/K4yBnmbf"))()
-mainModule.init(Rayfield, beastHubNotify, Window, myFunctions, reloadScript, beastHubIcon)
+local mainModule = nil
+local okModule, modResult = pcall(function()
+    return loadstring(game:HttpGet("https://pastebin.com/raw/K4yBnmbf"))()
+end)
+
+if okModule and modResult then
+    mainModule = modResult
+    mainModule.init(Rayfield, beastHubNotify, Window, myFunctions, reloadScript, beastHubIcon)
+else
+    warn("Failed to load main module:", modResult)
+end
 
 do
 local Shops = Window:CreateTab("Shops", "circle-dollar-sign")
