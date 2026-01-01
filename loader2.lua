@@ -5263,7 +5263,7 @@ Event:CreateButton({
     local hungerPct = (pData.PetData.Hunger / defHunger) * 100
 
     -- ONLY feed if hunger is BELOW or EQUAL to hungerLimit
-    if hungerPct <= hungerLimit then
+    if hungerPct <= 0 then
         while hungerPct < targetHunger and autoPetFeedEnabled do
             local fruitUid = nil
             for uid, item in pairs(playerData.InventoryData) do
@@ -5276,7 +5276,7 @@ Event:CreateButton({
             if fruitUid then
                 -- HOLD THE FRUIT BEFORE FEEDING
                 ReplicatedStorage.GameEvents.InventoryService:FireServer("Equip", fruitUid)
-                task.wait(0.15)
+               -- task.wait(0.15)
 
                 -- FEED PET
                 ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
