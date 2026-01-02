@@ -190,7 +190,8 @@ Automation:CreateButton({
                 local data = playerData.PetsData.PetInventory.Data
                 for id,petData in pairs(data) do
                     if id == uid then
-                        return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
+                        local weight = petData.PetData.BaseWeight or 1
+                        return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", weight * 1.1).."kg"
                     end
                 end
             end
@@ -5098,6 +5099,29 @@ Event:CreateButton({
         Title = "Pet/s to boost:",
         Content = "None"
     })
+    
+    local function getPlayerDataBoost()
+        local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
+        return dataService:GetData()
+    end
+
+    local function getEquippedPetsBoost()
+        local playerData = getPlayerDataBoost()
+        if not playerData.PetsData then return nil end
+        return playerData.PetsData.EquippedPets
+    end
+
+    local function getPetNameUsingIdBoost(uid)
+        local playerData = getPlayerDataBoost()
+        if playerData.PetsData.PetInventory.Data then
+            local petData = playerData.PetsData.PetInventory.Data[uid]
+            if petData then
+                local weight = petData.PetData.BaseWeight or 1
+                return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", weight * 1.1).."kg"
+            end
+        end
+    end
+
     local dropdown_selectPetsForPetBoost = Automation:CreateDropdown({
         Name = "Select Pet/s",
         Options = {},
@@ -5121,53 +5145,18 @@ Event:CreateButton({
     Automation:CreateButton({
         Name = "Refresh list",
         Callback = function()
-            local function getPlayerData()
-                local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
-                local logs = dataService:GetData()
-                return logs
-            end
-
-            local function equippedPets()
-                local playerData = getPlayerData()
-                if not playerData.PetsData then
-                    warn("PetsData missing")
-                    return nil
-                end
-
-                local tempStorage = playerData.PetsData.EquippedPets
-                if not tempStorage or type(tempStorage) ~= "table" then
-                    warn("EquippedPets missing or invalid")
-                    return nil
-                end
-
-                local petIdsList = {}
-                for _, id in ipairs(tempStorage) do
-                    table.insert(petIdsList, id)
-                end
-
-                return petIdsList
-            end
-
-            local function getPetNameUsingId(uid)
-                local playerData = getPlayerData()
-                if playerData.PetsData.PetInventory.Data then
-                    local data = playerData.PetsData.PetInventory.Data
-                    for id,petData in pairs(data) do
-                        if id == uid then
-                            return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
-                        end
+            local equipped = getEquippedPetsBoost()
+            local namesToId = {}
+            if equipped then
+                for _,id in ipairs(equipped) do
+                    local petName = getPetNameUsingIdBoost(id)
+                    if petName then
+                        table.insert(namesToId, petName.." | "..id)
                     end
                 end
             end
 
-            local equipped = equippedPets()
-            local namesToId = {}
-            for _,id in ipairs(equipped) do
-                local petName = getPetNameUsingId(id)
-                table.insert(namesToId, petName.." | "..id)
-            end
-
-            if equipped and #equipped > 0 then
+            if #namesToId > 0 then
                 dropdown_selectPetsForPetBoost:Refresh(namesToId)
             else
                 beastHubNotify("equipped pets error", "", 3)
@@ -5321,33 +5310,40 @@ Event:CreateButton({
         Flag = "selectPetsForFeed", 
         Callback = function(Options) end,
     })
+    
+    local function getPlayerDataFeed()
+        local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
+        return dataService:GetData()
+    end
+
+    local function getEquippedPetsFeed()
+        local playerData = getPlayerDataFeed()
+        if not playerData.PetsData then return nil end
+        return playerData.PetsData.EquippedPets
+    end
+
+    local function getPetNameUsingIdFeed(uid)
+        local playerData = getPlayerDataFeed()
+        if playerData.PetsData.PetInventory.Data then
+            local petData = playerData.PetsData.PetInventory.Data[uid]
+            if petData then
+                local weight = petData.PetData.BaseWeight or 1
+                return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", weight * 1.1).."kg"
+            end
+        end
+    end
+
     Automation:CreateButton({
         Name = "Refresh list",
         Callback = function()
-            local function getPlayerData()
-                local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
-                return dataService:GetData()
-            end
-            local function equippedPets()
-                local playerData = getPlayerData()
-                if not playerData.PetsData then return nil end
-                return playerData.PetsData.EquippedPets
-            end
-            local function getPetNameUsingId(uid)
-                local playerData = getPlayerData()
-                if playerData.PetsData.PetInventory.Data then
-                    local petData = playerData.PetsData.PetInventory.Data[uid]
-                    if petData then
-                        return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
-                    end
-                end
-            end
-            local equipped = equippedPets()
+            local equipped = getEquippedPetsFeed()
             local namesToId = {}
             if equipped then
                 for _,id in ipairs(equipped) do
-                    local petName = getPetNameUsingId(id)
-                    table.insert(namesToId, petName.." | "..id)
+                    local petName = getPetNameUsingIdFeed(id)
+                    if petName then
+                        table.insert(namesToId, petName.." | "..id)
+                    end
                 end
             end
             dropdown_selectPetsForFeed:Refresh(namesToId)
