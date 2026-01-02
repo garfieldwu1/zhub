@@ -4431,8 +4431,8 @@ local allowShopBuy = {"New Years Shop"}
 local autoBuyEventShopEnabled = false
 local autoBuyEventShopThread = nil
 Event:CreateToggle({
-    Name = "Auto Buy Event Shop",
-    CurrentValue = false,
+    Name = "Auto Buy Event Shop (Default ON)",
+    CurrentValue = true,
     Flag = "autoBuyEventShop",
     Callback = function(Value)
         autoBuyEventShopEnabled = Value
