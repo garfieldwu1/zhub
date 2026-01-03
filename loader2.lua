@@ -74,194 +74,23 @@ end
 local mainModule = loadstring(game:HttpGet("https://pastebin.com/raw/K4yBnmbf"))()
 mainModule.init(Rayfield, beastHubNotify, Window, myFunctions, reloadScript, beastHubIcon)
 
+-- Load separated modules
+local AutomationModule = loadstring(game:HttpGet("https://pastebin.com/raw/tTGmdFL6"))()
+---local CustomModule = loadstring(game:HttpGet("https://pastebin.com/raw/YOUR_CUSTOM_MODULE_LINK"))()
+--local EventModule = loadstring(game:HttpGet("https://pastebin.com/raw/YOUR_EVENT_MODULE_LINK"))()
+-- local MiscModule = loadstring(game:HttpGet("https://pastebin.com/raw/YOUR_MISC_MODULE_LINK"))()
+
+-- Initialize modules (pass necessary parameters)
+AutomationModule.init(Rayfield, Window, myFunctions, beastHubNotify, beastHubIcon)
+--CustomModule.init(Rayfield, Window, myFunctions, beastHubNotify, beastHubIcon)
+--EventModule.init(Rayfield, Window, myFunctions, beastHubNotify, beastHubIcon)
+-- MiscModule.init(Rayfield, Window, myFunctions, beastHubNotify, beastHubIcon)
+
 do
 local Shops = Window:CreateTab("Shops", "circle-dollar-sign")
 local Pets = Window:CreateTab("Pets", "cat")
 local PetEggs = Window:CreateTab("Eggs", "egg")
-local Automation = Window:CreateTab("Automation", "bot")
-local Custom = Window:CreateTab("Custom", "sparkles")
 local Misc = Window:CreateTab("Misc", "code")
-
-Misc:CreateSection("Performance")
--- local fpsBoostEnabled = false
-local clearSpiderWebsEnabled = false
-
-Misc:CreateToggle({
-    Name = "Clear Spider Webs",
-    CurrentValue = false,
-    Flag = "clearSpiderWebs",
-    Callback = function(Value)
-        clearSpiderWebsEnabled = Value
-        if Value then
-            local function clearWebs()
-                for _, v in pairs(game.Workspace:GetDescendants()) do
-                    if v.Name == "Web" or v.Name == "SpiderWeb" or (v:IsA("BasePart") and string.find(string.lower(v.Name), "web")) then
-                        pcall(function()
-                            v.Transparency = 1
-                            v.CanCollide = false
-                            if v:FindFirstChild("ParticleEmitter") then
-                                v.ParticleEmitter.Enabled = false
-                            end
-                        end)
-                        end
-                end
-            end
-            task.spawn(function()
-                while clearSpiderWebsEnabled do
-                    pcall(clearWebs)
-                    task.wait(1)
-                end
-            end)
-        end
-    end,
-})
-
--- Monitor new webs
-game.Workspace.DescendantAdded:Connect(function(descendant)
-    if clearSpiderWebsEnabled then
-        if descendant.Name == "Web" or descendant.Name == "SpiderWeb" or (descendant:IsA("BasePart") and string.find(string.lower(descendant.Name), "web")) then
-            task.wait() -- wait for properties to load
-            pcall(function()
-                descendant.Transparency = 1
-                descendant.CanCollide = false
-                if descendant:FindFirstChild("ParticleEmitter") then
-                    descendant.ParticleEmitter.Enabled = false
-                end
-            end)
-        end
-    end
-end)
-local Event = Window:CreateTab("Event", "gift")
-
--- Shared variables for cancel animation control
-local cancelAnimationPaused = false
-
--- ===CUSTOM PET LOADOUTS===
-Custom:CreateSection("Pet Team Loadouts", true)
-local customLoadout1 = Custom:CreateParagraph({Title = "Loadout 1", Content = "Empty"})
-local customLoadout2 = Custom:CreateParagraph({Title = "Loadout 2", Content = "Empty"})
-local customLoadout3 = Custom:CreateParagraph({Title = "Loadout 3", Content = "Empty"})
-
-Custom:CreateDivider()
-
-for loadoutNum = 1, 3 do
-    Custom:CreateButton({
-        Name = "Save Team as Loadout " .. loadoutNum,
-        Callback = function()
-            local saveFolder = "BeastHub"
-            local saveFile = saveFolder.."/custom_"..loadoutNum..".txt"
-            if not isfolder(saveFolder) then makefolder(saveFolder) end
-
-            local function getPlayerData()
-                local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
-                return dataService:GetData()
-            end
-            local function equippedPets()
-                local playerData = getPlayerData()
-                if not playerData.PetsData then return nil end
-                local tempStorage = playerData.PetsData.EquippedPets
-                if not tempStorage or type(tempStorage) ~= "table" then return nil end
-                return tempStorage
-            end
-            local function getPetNameUsingId(uid)
-                local playerData = getPlayerData()
-                if playerData.PetsData.PetInventory.Data then
-                    for id, petData in pairs(playerData.PetsData.PetInventory.Data) do
-                        if id == uid then
-                            return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
-                        end
-                    end
-                end
-            end
-
-            local equipped = equippedPets()
-            local petsString = ""
-            if equipped then
-                for _, id in ipairs(equipped) do
-                    local petName = getPetNameUsingId(id)
-                    petsString = petsString..petName..">"..id.."|\n"
-                end
-            end
-
-            if equipped and #equipped > 0 then
-                if loadoutNum == 1 then customLoadout1:Set({Title = "Loadout 1", Content = petsString})
-                elseif loadoutNum == 2 then customLoadout2:Set({Title = "Loadout 2", Content = petsString})
-                else customLoadout3:Set({Title = "Loadout 3", Content = petsString}) end
-                writefile(saveFile, petsString)
-                beastHubNotify("Saved Loadout "..loadoutNum.."!", "", 2)
-            else
-                beastHubNotify("No pets equipped", "", 2)
-            end
-        end
-    })
-
-    Custom:CreateButton({
-        Name = "Load Loadout " .. loadoutNum,
-        Callback = function()
-            local function getPetEquipLocation()
-                local ok, result = pcall(function()
-                    local spawnCFrame = (function()
-                        local localPlayer = game.Players.LocalPlayer
-                        local farmsFolder = game.Workspace:WaitForChild("Farm")
-                        for _, farm in pairs(farmsFolder:GetChildren()) do
-                            local ownerValue = farm:FindFirstChild("Important") and farm.Important:FindFirstChild("Data") and farm.Important.Data:FindFirstChild("Owner")
-                            if ownerValue and ownerValue.Value == localPlayer.Name then
-                                local spawnPoint = farm:FindFirstChild("Spawn_Point")
-                                return spawnPoint and spawnPoint:IsA("BasePart") and spawnPoint.CFrame or nil
-                            end
-                        end
-                        return nil
-                    end)()
-                    if typeof(spawnCFrame) ~= "CFrame" then return nil end
-                    return spawnCFrame * CFrame.new(0, 0, -5)
-                end)
-                return ok and result or nil
-            end
-
-            local function parseFromFile()
-                local ids = {}
-                local ok, content = pcall(function() return readfile("BeastHub/custom_"..loadoutNum..".txt") end)
-                if not ok then return ids end
-                for line in string.gmatch(content, "([^\n]+)") do
-                    local id = string.match(line, "({[%w%-]+})")
-                    if id then table.insert(ids, id) end
-                end
-                return ids
-            end
-
-            local function getEquippedPets()
-                local playerData = require(game:GetService("ReplicatedStorage").Modules.DataService):GetData()
-                if not playerData.PetsData then return {} end
-                return playerData.PetsData.EquippedPets or {}
-            end
-
-            local equipped = getEquippedPets()
-            if #equipped > 0 then
-                for _, id in ipairs(equipped) do
-                    game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("PetsService"):FireServer("UnequipPet", id)
-                    task.wait()
-                end
-            end
-
-            local location = getPetEquipLocation()
-            local petIds = parseFromFile()
-
-            if #petIds == 0 then
-                beastHubNotify("Loadout "..loadoutNum.." is empty", "", 2)
-                return
-            end
-
-            for _, id in ipairs(petIds) do
-                game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("PetsService"):FireServer("EquipPet", id, location)
-                task.wait()
-            end
-
-            beastHubNotify("Loaded Loadout "..loadoutNum, "", 2)
-        end
-    })
-
-    if loadoutNum < 3 then Custom:CreateDivider() end
-end
 
 -- ===Declarations
 local workspace = game:GetService("Workspace")
@@ -684,11 +513,6 @@ local Toggle_autoBuyEggs_all = Shops:CreateToggle({
 })
 
 Shops:CreateDivider()
-
-
-
-
-
 -- PetEggs>Eggs
 PetEggs:CreateSection("Auto Place eggs")
 --Auto place eggs
@@ -1241,7 +1065,7 @@ PetEggs:CreateButton({
 })
 PetEggs:CreateDivider()
 
---Pet/Eggs>SMART HATCHING
+--PetEggs>SMART HATCHING
 PetEggs:CreateSection("SMART Auto Hatching")
 -- local Paragraph = Pets:CreateParagraph({Title = "INSTRUCTIONS:", Content = "1.) Setup your Auto place Eggs above and turn on toggle for auto place eggs. 2.) Setup your selected pets for Auto Sell above. 3.) Selected desginated loadouts below. 4.) Turn on toggle for Full Auto Hatching"})
 PetEggs:CreateParagraph({
@@ -1693,8 +1517,6 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                             game.Players.LocalPlayer.Character.Humanoid:UnequipTools() --prevention
                             task.wait(1)
                             game.Players.LocalPlayer.Character.Humanoid:UnequipTools() --prevention
-                            task.wait(1)
-                            game.Players.LocalPlayer.Character.Humanoid:UnequipTools() --prevention
                             task.wait(10)
                             local success, err = pcall(function()
                                 autoSellPets(selectedPetsForAutoSell, sellBelow, function()
@@ -2012,7 +1834,7 @@ local Toggle_autoMutation = Pets:CreateToggle({
                     local playerData = getPlayerData()
                     if playerData.PetsData and playerData.PetsData.PetInventory and playerData.PetsData.PetInventory.Data then
                         for id, data in pairs(playerData.PetsData.PetInventory.Data) do
-                            if tostring(id) == uid then
+                            if id == uid then
                                 return data.PetData.Level
                             end
                         end
@@ -2537,7 +2359,7 @@ local Toggle_autoLevel = Pets:CreateToggle({
                 else
                     warn("PetsData not found!")
                     return nil
-                end
+                    end
             end
 
             local function refreshPets()
@@ -4268,20 +4090,68 @@ local Toggle_disableEggCollision = PetEggs:CreateToggle({
 PetEggs:CreateDivider()
 
 --== Misc>Performance
-Misc:CreateSection("Advance Event")
-Misc:CreateButton({
-    Name = "Advance Event",
-    Callback = function()
-        local smithingEvent = game:GetService("ReplicatedStorage").Modules.UpdateService:FindFirstChild("SmithingEvent")
-        if smithingEvent then
-            smithingEvent.Parent = workspace
-        end
-        workspace.SafariEvent.Parent = game:GetService("ReplicatedStorage")
-    end,
-    })
-Misc:CreateDivider()
+--Misc:CreateSection("Advance Event")
+--Misc:CreateButton({
+    --Name = "Advance Event",
+  --  Callback = function()
+    --    local smithingEvent = game:GetService("ReplicatedStorage").Modules.UpdateService:FindFirstChild("SmithingEvent")
+      --  if smithingEvent then
+          --  smithingEvent.Parent = workspace
+     --   end
+     --   workspace.SafariEvent.Parent = game:GetService("ReplicatedStorage")
+   -- end,
+  --  })
+-- Misc:CreateDivider()
 
 Misc:CreateSection("Performance")
+-- Clear Spider Webs
+local clearSpiderWebsEnabled = false
+
+Misc:CreateToggle({
+    Name = "Clear Spider Webs",
+    CurrentValue = false,
+    Flag = "clearSpiderWebs",
+    Callback = function(Value)
+        clearSpiderWebsEnabled = Value
+        if Value then
+            local function clearWebs()
+                for _, v in pairs(game.Workspace:GetDescendants()) do
+                    if v.Name == "Web" or v.Name == "SpiderWeb" or (v:IsA("BasePart") and string.find(string.lower(v.Name), "web")) then
+                        pcall(function()
+                            v.Transparency = 1
+                            v.CanCollide = false
+                            if v:FindFirstChild("ParticleEmitter") then
+                                v.ParticleEmitter.Enabled = false
+                            end
+                        end)
+                        end
+                end
+            end
+            task.spawn(function()
+                while clearSpiderWebsEnabled do
+                    pcall(clearWebs)
+                    task.wait(1)
+                end
+            end)
+        end
+    end,
+})
+
+-- Monitor new webs
+game.Workspace.DescendantAdded:Connect(function(descendant)
+    if clearSpiderWebsEnabled then
+        if descendant.Name == "Web" or descendant.Name == "SpiderWeb" or (descendant:IsA("BasePart") and string.find(string.lower(descendant.Name), "web")) then
+            task.wait() -- wait for properties to load
+            pcall(function()
+                descendant.Transparency = 1
+                descendant.CanCollide = false
+                if descendant:FindFirstChild("ParticleEmitter") then
+                    descendant.ParticleEmitter.Enabled = false
+                end
+            end)
+        end
+    end
+end)
 --Hide other player's Farm
 local Toggle_hideOtherFarm = Misc:CreateToggle({
     Name = "Hide Other Player's Farm",
@@ -4407,981 +4277,6 @@ Misc:CreateDivider()
 
 
 -- ========== EVENT TAB UI ==========
-Event:CreateSection("New Year Event")
-local autoClaimNewYearLoginEnabled = false
-local autoClaimNewYearLoginThread = nil
-
-Event:CreateToggle({
-    Name = "Auto Claim Daily login",
-    CurrentValue = false,
-    Flag = "event_autoClaimNewYearLogin",
-    Callback = function(Value)
-        autoClaimNewYearLoginEnabled = Value
-
-        if autoClaimNewYearLoginEnabled then
-            if autoClaimNewYearLoginThread then return end
-
-            local ReplicatedStorage = game:GetService("ReplicatedStorage")
-            local player = game.Players.LocalPlayer
-
-            autoClaimNewYearLoginThread = task.spawn(function()
-                while autoClaimNewYearLoginEnabled do
-                    local playerData = require(ReplicatedStorage.Modules.DataService):GetData()
-                    local adventDays = playerData.NewYearsEvent and playerData.NewYearsEvent.Advent and playerData.NewYearsEvent.Advent.Days or {}
-
-                    for dayIndex, dayInfo in ipairs(adventDays) do
-                        if dayInfo.State == "Complete" then
-                            pcall(function()
-                                ReplicatedStorage.GameEvents.NewYearsEvent.ClaimAdventCalendarDay:FireServer(dayIndex)
-                            end)
-                            break
-                        end
-                    end
-
-                    task.wait(60)
-                end
-
-                autoClaimNewYearLoginThread = nil
-            end)
-        else
-            autoClaimNewYearLoginEnabled = false
-            autoClaimNewYearLoginThread = nil
-        end
-    end,
-})
-
-Event:CreateDivider()
-
-Event:CreateSection("Event Shop")
-local curEventName
-local function getEventItems()
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local dataTbl = require(ReplicatedStorage.Data.EventShopData)
-    local listItems = {}
-
-    for eventName,eventItems in pairs(dataTbl) do
-        curEventName = eventName
-        for itemName,itemData in pairs(eventItems) do
-            local itemType = tostring(itemData.ItemType or "")
-            local itemToType = itemName.." | "..itemType
-            table.insert(listItems, itemToType)
-        end
-    end
-
-    return listItems
-end
-local allShopItems = getEventItems()
-task.wait()
-
-local autoBuyEventLookup = {}
-local dropdown_eventShopItems = Event:CreateDropdown({
-    Name = "Select Items",
-    Options = allShopItems,
-    CurrentOption = {},
-    MultipleOptions = true,
-    Flag = "autoBuyEventShopItems",
-    Callback = function(Options)
-        if #Options > 0 then
-            autoBuyEventLookup = {}
-            for _, option in ipairs(Options) do
-                local curItemName = option:match("^(.-)%s*|")
-                if curItemName then
-                    autoBuyEventLookup[curItemName] = true
-                end
-            end
-        end
-    end,
-})
-
-Event:CreateButton({
-    Name = "Clear",
-    Callback = function()
-        dropdown_eventShopItems:Set({})
-    end,
-})
-
-local allowShopBuy = {"New Years Shop"}
-local autoBuyEventShopEnabled = false
-local autoBuyEventShopThread = nil
-Event:CreateToggle({
-    Name = "Auto Buy Event Shop (Default ON)",
-    CurrentValue = true,
-    Flag = "autoBuyEventShop",
-    Callback = function(Value)
-        autoBuyEventShopEnabled = Value
-        if autoBuyEventShopEnabled then
-            if autoBuyEventShopThread then
-                return
-            end
-            autoBuyEventShopThread = task.spawn(function()
-                local function getPlayerData()
-                    local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
-                    return dataService:GetData()
-                end
-                while autoBuyEventShopEnabled do
-                    local listToBuy = dropdown_eventShopItems and dropdown_eventShopItems.CurrentOption or {}
-                    if #listToBuy == 0 then
-                        task.wait(60)
-                    else
-                        local playerData = getPlayerData()
-                        local eventStock = playerData and playerData.EventShopStock
-                        if eventStock then
-                            for eventName, eventData in pairs(eventStock) do
-                                if eventName == curEventName or #allowShopBuy > 0 then
-                                    local stocks = eventData.Stocks
-                                    if stocks then
-                                        for itemName, stockData in pairs(stocks) do
-                                            local curStock = stockData.Stock
-                                            if curStock and curStock > 0 then
-                                                if autoBuyEventLookup[itemName] == true then
-                                                    for i = 1, curStock do
-                                                        local args = {
-                                                            [1] = itemName,
-                                                            [2] = curEventName
-                                                        }
-                                                        game:GetService("ReplicatedStorage").GameEvents.BuyEventShopStock:FireServer(unpack(args))
-                                                        task.wait(0.15)
-                                                        if #allowShopBuy > 0 then
-                                                            for _, allowBuy in ipairs(allowShopBuy) do
-                                                                local args = {
-                                                                    [1] = itemName,
-                                                                    [2] = allowBuy
-                                                                }
-                                                                game:GetService("ReplicatedStorage").GameEvents.BuyEventShopStock:FireServer(unpack(args))
-                                                                task.wait(0.15)
-                                                            end
-                                                        end
-                                                    end
-                                                end
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                        task.wait(60)
-                    end
-                end
-                autoBuyEventShopThread = nil
-            end)
-        else
-            autoBuyEventShopEnabled = false
-            autoBuyEventShopThread = nil
-        end
-    end,
-})
-
-Event:CreateDivider()
-
-Event:CreateSection("Christmas Event - Auto Player Gift")
-local receiver_name = Event:CreateInput({
-    Name = "Receiver Username",
-    CurrentValue = "",
-    PlaceholderText = "username",
-    RemoveTextAfterFocusLost = false,
-    Flag = "xmasEventGiftReceiver",
-    Callback = function(Text) end,
-})
-
-local event_numOfGifts = Event:CreateInput({
-    Name = "# of gifts to send",
-    CurrentValue = "",
-    PlaceholderText = "number",
-    RemoveTextAfterFocusLost = false,
-    Flag = "xmasEventNumOfGiftsToSend",
-    Callback = function(Text) end,
-})
-
-local event_delayToSend = Event:CreateInput({
-    Name = "Delay to send",
-    CurrentValue = "",
-    PlaceholderText = "seconds",
-    RemoveTextAfterFocusLost = false,
-    Flag = "xmasEventDelayToSend",
-    Callback = function(Text) end,
-})
-
-local giftSendRunning = false
-
-Event:CreateButton({
-    Name = "Send",
-    Callback = function()
-        if giftSendRunning then
-            beastHubNotify("Gift sending already running", "", 3)
-            return
-        end
-
-        local receiverName = receiver_name.CurrentValue
-        local giftCount = tonumber(event_numOfGifts.CurrentValue)
-        local delaySeconds = tonumber(event_delayToSend.CurrentValue) or 0
-
-        if type(receiverName) ~= "string" or receiverName:gsub("%s+", "") == "" then
-            beastHubNotify("Invalid receiver username", "", 3)
-            return
-        end
-
-        if not giftCount or giftCount <= 0 or giftCount % 1 ~= 0 then
-            beastHubNotify("Invalid gift count", "", 3)
-            return
-        end
-
-        if not delaySeconds or delaySeconds < 0 then
-            beastHubNotify("Invalid delay value", "", 3)
-            return
-        end
-
-        local players = game:GetService("Players")
-        if not players then
-            beastHubNotify("Players service unavailable", "", 3)
-            return
-        end
-
-        local targetPlayer = players:FindFirstChild(receiverName)
-        if not targetPlayer then
-            beastHubNotify("Player not found", "", 3)
-            return
-        end
-
-        local replicatedStorage = game:GetService("ReplicatedStorage")
-        if not replicatedStorage then
-            beastHubNotify("ReplicatedStorage unavailable", "", 3)
-            return
-        end
-
-        local gameEvents = replicatedStorage:FindFirstChild("GameEvents")
-        if not gameEvents then
-            beastHubNotify("GameEvents folder missing", "", 3)
-            return
-        end
-
-        local tryUseGear = gameEvents:FindFirstChild("TryUseGear")
-        if not tryUseGear then
-            beastHubNotify("TryUseGear remote missing", "", 3)
-            return
-        end
-
-        giftSendRunning = true
-
-        task.spawn(function()
-            for i = 1, giftCount do
-                if not giftSendRunning then
-                    beastHubNotify("Gift sending stopped", "", 3)
-                    break
-                end
-
-                local ok, err = pcall(function()
-                    equipItemByName("Player Gift")
-                    task.wait(0.2)
-                    tryUseGear:FireServer("Player Gift", targetPlayer)
-                end)
-
-                if not ok then
-                    beastHubNotify("Failed to send gift at "..i, "", 3)
-                    break
-                end
-
-                if delaySeconds > 0 then
-                    task.wait(delaySeconds)
-                end
-            end
-
-            giftSendRunning = false
-        end)
-    end,
-})
-
-Event:CreateButton({
-    Name = "Stop",
-    Callback = function()
-        if giftSendRunning then
-            giftSendRunning = false
-            beastHubNotify("Gift sending stopped", "", 3)
-        end
-    end,
-})
-Event:CreateDivider()
-
-Event:CreateSection("Auto Submit Christmas Event")
-local eventDelayToSubmit = 5
-Event:CreateInput({
-    Name = "Delay to submit",
-    CurrentValue = "5",
-    PlaceholderText = "seconds",
-    RemoveTextAfterFocusLost = false,
-    Flag = "eventDelayToSubmit",
-    Callback = function(Text)
-        eventDelayToSubmit = tonumber(Text)
-        if not eventDelayToSubmit then
-            eventDelayToSubmit = 5
-        end
-    end,
-})
-local autoSubmitAllEventEnabled = false
-local autoSubmitAllEventThread = nil
-Event:CreateToggle({
-    Name = "Auto Submit all",
-    CurrentValue = false,
-    Flag = "eventAutoSubmitAll",
-    Callback = function(Value)
-        autoSubmitAllEventEnabled = Value
-        if autoSubmitAllEventEnabled then
-            if autoSubmitAllEventThread then
-                return
-            end
-            beastHubNotify("Auto submit all for event running","",3)
-            autoSubmitAllEventThread = task.spawn(function()
-                while autoSubmitAllEventEnabled do
-                    game:GetService("ReplicatedStorage").GameEvents.ChristmasEvent.ChristmasTree_SubmitAll:FireServer()
-                    task.wait(eventDelayToSubmit)
-                end
-                autoSubmitAllEventThread = nil
-            end)
-        else
-            autoSubmitAllEventEnabled = false
-            autoSubmitAllEventThread = nil
-        end
-    end,
-})
-Event:CreateDivider()
-
-Event:CreateButton({
-    Name = "Bring Back Christmas Event Platforms",
-    Callback = function()
-        local ReplicatedStorage = game:GetService("ReplicatedStorage")
-        local adventPlatform = ReplicatedStorage.Modules.UpdateService:WaitForChild("AdventPlatformOld")
-        local lumberjackPlatform = ReplicatedStorage.Modules.UpdateService:WaitForChild("LumberjackPlatformOld")
-        adventPlatform.Parent = workspace
-        lumberjackPlatform.Parent = workspace
-    end,
-})
-    Event:CreateDivider()
-
-    Automation:CreateSection("Cancel READY Animation (Quick Cast)")
-    local parag_cancelAnim = Automation:CreateParagraph({
-        Title = "Pickup/Place:",
-        Content = "None"
-    })
-    local dropdown_selectPetsForCancelAnim = Automation:CreateDropdown({
-        Name = "Select Pet/s",
-        Options = {},
-        CurrentOption = {},
-        MultipleOptions = true,
-        Flag = "selectPetsForCancelAnim", 
-        Callback = function(Options)
-            local listText = table.concat(Options, ", ")
-            if listText == "" then
-                listText = "None"
-            end
-
-            parag_cancelAnim:Set({
-                Title = "Pickup/Place:",
-                Content = listText
-            })
-        end,
-
-    })
-    Automation:CreateButton({
-        Name = "Refresh list",
-        Callback = function()
-            local function getPlayerData()
-                local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
-                local logs = dataService:GetData()
-                return logs
-            end
-
-            local function equippedPets()
-                local playerData = getPlayerData()
-                if not playerData.PetsData then
-                    warn("PetsData missing")
-                    return nil
-                end
-
-                local tempStorage = playerData.PetsData.EquippedPets
-                if not tempStorage or type(tempStorage) ~= "table" then
-                    warn("EquippedPets missing or invalid")
-                    return nil
-                end
-
-                local petIdsList = {}
-                for _, id in ipairs(tempStorage) do
-                    table.insert(petIdsList, id)
-                end
-
-                return petIdsList
-            end
-
-            local function getPetNameUsingId(uid)
-                local playerData = getPlayerData()
-                if playerData.PetsData.PetInventory.Data then
-                    local data = playerData.PetsData.PetInventory.Data
-                    for id,petData in pairs(data) do
-                        if id == uid then
-                            return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
-                        end
-                    end
-                end
-            end
-
-            local equipped = equippedPets()
-            local namesToId = {}
-            for _,id in ipairs(equipped) do
-                local petName = getPetNameUsingId(id)
-                table.insert(namesToId, petName.." | "..id)
-            end
-
-            if equipped and #equipped > 0 then
-                dropdown_selectPetsForCancelAnim:Refresh(namesToId)
-            else
-                beastHubNotify("equipped pets error", "", 3)
-            end
-        end,
-    })
-    Automation:CreateButton({
-        Name = "Clear Selected",
-        Callback = function()
-            dropdown_selectPetsForCancelAnim:Set({})
-            parag_cancelAnim:Set({
-                Title = "Pickup/Place:",
-                Content = "None"
-            })
-        end,
-    })
-    local animation_cancelDelay = Automation:CreateInput({
-        Name = "Animation Cancel delay",
-        CurrentValue = "",
-        PlaceholderText = "seconds",
-        RemoveTextAfterFocusLost = false,
-        Flag = "animationCancelDelay",
-        Callback = function(Text)
-        -- The function that takes place when the input is changed
-        -- The variable (Text) is a string for the value in the text box
-        end,
-    })
-
-    local cancelAnimationEnabled
-    local cancelAnimationThread = nil
-    local cooldownListenerCancelAnim = nil
-    local petCooldownsCancelAnim = {}
-
-    local function isPetInWorkspace(petId)
-        local petsFolder = workspace:FindFirstChild("PetsPhysical")
-        if not petsFolder then return false end
-
-        for _, pet in ipairs(petsFolder:GetChildren()) do
-            if pet:GetAttribute("UUID") == petId then
-                return true
-            end
-        end
-
-        return false
-    end
-
-    Automation:CreateToggle({
-        Name = "Cancel Animation",
-        CurrentValue = false,
-        Flag = "cancelAnimation",
-        Callback = function(Value)
-            cancelAnimationEnabled = Value
-
-            if cancelAnimationEnabled then
-                if cancelAnimationThread then return end
-                -- Hook PetCooldownsUpdated
-                cooldownListenerCancelAnim = game:GetService("ReplicatedStorage").GameEvents.PetCooldownsUpdated.OnClientEvent:Connect(function(petId, data)
-                    if typeof(data) == "table" and data[1] and data[1].Time then
-                        petCooldownsCancelAnim[petId] = data[1].Time
-                    else
-                        petCooldownsCancelAnim[petId] = 0
-                    end
-                end)
-
-                -- Validate setup
-                local pickupList, animDelay, t = {}, tonumber(animation_cancelDelay.CurrentValue), 0
-                while t < 3 do
-                    pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
-                    animDelay = tonumber(animation_cancelDelay.CurrentValue)
-                    if #pickupList > 0 then
-                        if not animDelay then
-                            beastHubNotify("Invalid delay/cd input", "", 3)
-                            return
-                        end
-                        break
-                    end
-                    task.wait(0.5)
-                    t = t + 0.5
-                end
-                if #pickupList == 0 then
-                    beastHubNotify("Missing setup, please select pets", "", 3)
-                    return
-                end
-
-                local function isEquipped(uuid)
-                    local function getPlayerData()
-                        local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
-                        local logs = dataService:GetData()
-                        return logs
-                    end
-
-                    local function equippedPets()
-                        local playerData = getPlayerData()
-                        if not playerData.PetsData then
-                            warn("PetsData missing")
-                            return nil
-                        end
-
-                        local tempStorage = playerData.PetsData.EquippedPets
-                        if not tempStorage or type(tempStorage) ~= "table" then
-                            warn("EquippedPets missing or invalid")
-                            return nil
-                        end
-
-                        local petIdsList = {}
-                        for _, id in ipairs(tempStorage) do
-                            table.insert(petIdsList, id)
-                        end
-
-                        return petIdsList
-                    end
-
-                    local equippedPets = equippedPets()
-                    if equippedPets then
-                        for _,id in ipairs(equippedPets) do
-                            if id == uuid then
-                                return true
-                            end
-                        end
-                    end
-
-                    return false
-                end
-
-                beastHubNotify("Cancel animation running", "", 3)
-                local location = CFrame.new(getFarmSpawnCFrame():PointToWorldSpace(Vector3.new(8,0,-50)))
-
-                -- Main auto pickup thread
-                local activeCancelTasks = {}
-                cancelAnimationThread = task.spawn(function()
-                    while cancelAnimationEnabled do
-                        -- Skip execution when paused
-                        if not cancelAnimationPaused then
-                            local anyReady = false
-                            local petEggsList = myFunctions.getMyFarmPetEggs()
-                            for _, egg in pairs(petEggsList) do
-                                if egg:IsA("Model") and egg:GetAttribute("TimeToHatch") == 0 then
-                                    anyReady = false
-                                    break
-                                end
-                            end
-
-                            if not anyReady then
-                                pickupList = dropdown_selectPetsForCancelAnim.CurrentOption or {}
-                                for _, pickupEntry in ipairs(pickupList) do
-                                    if not cancelAnimationEnabled then break end
-                                    local petId = (pickupEntry:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
-                                    if not activeCancelTasks[petId] then
-                                        local timeLeft = petCooldownsCancelAnim[petId] or 0
-                                        if timeLeft == 0 and isEquipped(petId) then
-                                            activeCancelTasks[petId] = true
-                                            task.spawn(function()
-                                                task.wait(animDelay)
-                                                if cancelAnimationEnabled and not cancelAnimationPaused and isPetInWorkspace(petId) then
-                                                    -- Cancel animation WITHOUT pickup animation as requested
-                                                    game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("UnequipPet", petId)
-                                                    task.wait(0.05)
-                                                    -- equipPetByUuid(petId) -- REMOVED to avoid pickup animation as requested
-                                                    game:GetService("ReplicatedStorage").GameEvents.PetsService:FireServer("EquipPet", petId, location)
-                                                end
-                                                activeCancelTasks[petId] = nil
-                                            end)
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                        task.wait(0.05)
-                    end
-                    cancelAnimationThread = nil
-                end)
-
-            else
-                -- Disable
-                if cooldownListenerCancelAnim then
-                    cooldownListenerCancelAnim:Disconnect()
-                    cooldownListenerCancelAnim = nil
-                end
-                cancelAnimationEnabled = false
-                cancelAnimationThread = nil
-            end
-        end
-    })
-    Automation:CreateDivider()
-
-    --Auto Pet boost
-    Automation:CreateSection("Auto Pet Boost")
-    -- --select pet
-    local parag_petsToBoost = Automation:CreateParagraph({
-        Title = "Pet/s to boost:",
-        Content = "None"
-    })
-    local dropdown_selectPetsForPetBoost = Automation:CreateDropdown({
-        Name = "Select Pet/s",
-        Options = {},
-        CurrentOption = {},
-        MultipleOptions = true,
-        Flag = "selectPetsForPetBoost", 
-        Callback = function(Options)
-            local listText = table.concat(Options, ", ")
-            if listText == "" then
-                listText = "None"
-            end
-
-            parag_petsToBoost:Set({
-                Title = "Pet/s to boost:",
-                Content = listText
-            })
-        end,
-
-    })
-
-    Automation:CreateButton({
-        Name = "Refresh list",
-        Callback = function()
-            local function getPlayerData()
-                local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
-                local logs = dataService:GetData()
-                return logs
-            end
-
-            local function equippedPets()
-                local playerData = getPlayerData()
-                if not playerData.PetsData then
-                    warn("PetsData missing")
-                    return nil
-                end
-
-                local tempStorage = playerData.PetsData.EquippedPets
-                if not tempStorage or type(tempStorage) ~= "table" then
-                    warn("EquippedPets missing or invalid")
-                    return nil
-                end
-
-                local petIdsList = {}
-                for _, id in ipairs(tempStorage) do
-                    table.insert(petIdsList, id)
-                end
-
-                return petIdsList
-            end
-
-            local function getPetNameUsingId(uid)
-                local playerData = getPlayerData()
-                if playerData.PetsData.PetInventory.Data then
-                    local data = playerData.PetsData.PetInventory.Data
-                    for id,petData in pairs(data) do
-                        if id == uid then
-                            return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
-                        end
-                    end
-                end
-            end
-
-            local equipped = equippedPets()
-            local namesToId = {}
-            for _,id in ipairs(equipped) do
-                local petName = getPetNameUsingId(id)
-                table.insert(namesToId, petName.." | "..id)
-            end
-
-            if equipped and #equipped > 0 then
-                dropdown_selectPetsForPetBoost:Refresh(namesToId)
-            else
-                beastHubNotify("equipped pets error", "", 3)
-            end
-        end,
-    })
-
-    Automation:CreateButton({
-        Name = "Clear Selected",
-        Callback = function()
-            dropdown_selectPetsForPetBoost:Set({})
-            parag_petsToBoost:Set({
-                Title = "Pet/s to boost:",
-                Content = "None"
-            })
-        end,
-    })
-
-    -- --select toy
-    local dropdown_selectedToys = Automation:CreateDropdown({
-        Name = "Select Toy/s",
-        Options = {"Small Pet Toy", "Medium Pet Toy", "Large Pet Toy"},
-        CurrentOption = {},
-        MultipleOptions = true,
-        Flag = "selectToysForPetBoost", 
-        Callback = function(Options)
-        -- The function that takes place when the selected option is changed
-        -- The variable (Options) is a table of strings for the current selected options
-        end,
-    })
-
-    local autoPetBoostEnabled = false
-    local autoPetBoostThread = nil
-    Automation:CreateToggle({
-        Name = "Auto Boost",
-        CurrentValue = false,
-        Flag = "autoBoost",
-        Callback = function(Value)
-            autoPetBoostEnabled = Value
-
-            if autoPetBoostEnabled then
-                if autoPetBoostThread then
-                    return
-                end
-                beastHubNotify("Auto pet boost running", "", 3)
-                autoPetBoostThread = task.spawn(function()
-                    local function checkBoostTimeLeft(toyName, petId) 
-                        local toyToBoostAmount = {
-                            ["Small Pet Toy"] = 0.1,
-                            ["Medium Pet Toy"] = 0.2,
-                            ["Large Pet Toy"] = 0.3
-                        }
-
-                        local function getPlayerData()
-                            local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
-                            local logs = dataService:GetData()
-                            return logs
-                        end
-
-                        local playerData = getPlayerData()
-                        local petData = playerData.PetsData.PetInventory.Data
-                        for id, data in pairs(petData) do
-                            if tostring(id) == tostring(petId) then
-                                if data.PetData and data.PetData.Boosts then
-                                --have boost, check if matching
-                                    local boosts = data.PetData.Boosts
-                                    for _,boost in ipairs(boosts) do
-                                        local boostType = boost.BoostType
-                                        local boostAmount = boost.BoostAmount
-                                        local boostTime = boost.Time
-
-                                        if boostType == "PASSIVE_BOOST" then
-                                            if toyToBoostAmount[toyName] == boostAmount then
-                                                return boostTime
-                                            end
-                                        end
-                                    end
-                                    return 0
-                                else
-                                    return 0
-                                end
-                            end
-                        end
-                    end 
-
-                    while autoPetBoostEnabled do
-                        local petList = dropdown_selectPetsForPetBoost and dropdown_selectPetsForPetBoost.CurrentOption or {}
-                        local toyList = dropdown_selectedToys and dropdown_selectedToys.CurrentOption or {}
-
-                        if #petList == 0 or #toyList == 0 then
-                            task.wait(1)
-                        else
-                            for _, pet in ipairs(petList) do
-                                for _, toy in ipairs(toyList) do
-                                    if not autoPetBoostEnabled then
-                                        break
-                                    end
-
-                                    local petId = (pet:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
-                                    local toyName = toy
-
-                                    --check if already boosted
-                                    local timeLeft = checkBoostTimeLeft(toyName, petId)
-
-                                    --boost only if good to boost
-                                    -- beastHubNotify("timeLeft: "..tostring(timeLeft), "", "1")
-                                    if timeLeft <= 0 then
-                                        -- print("inside if")
-                                        --equip boost
-                                        if equipItemByName(toyName) then
-                                            task.wait(.1)
-                                            --boost
-                                            local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                                            local PetBoostService = ReplicatedStorage.GameEvents.PetBoostService -- RemoteEvent 
-                                            PetBoostService:FireServer(
-                                                "ApplyBoost",
-                                                petId
-                                            )
-                                        else
-                                            -- print("not good to boost")
-                                        end
-
-                                    end
-                                    task.wait(0.2)
-                                end
-                                if not autoPetBoostEnabled then
-                                    break
-                                end
-                            end
-
-                            task.wait(2)
-                        end
-                    end
-
-                    autoPetBoostThread = nil
-                end)
-            else
-                autoPetBoostEnabled = false
-                autoPetBoostThread = nil
-            end
-        end,
-    })
-    Automation:CreateDivider()
-
-    Automation:CreateSection("Auto Feed")
-    local dropdown_selectPetsForFeed = Automation:CreateDropdown({
-        Name = "Select Pet/s",
-        Options = {},
-        CurrentOption = {},
-        MultipleOptions = true,
-        Flag = "selectPetsForFeed", 
-        Callback = function(Options) end,
-    })
-    Automation:CreateButton({
-        Name = "Refresh list",
-        Callback = function()
-            local function getPlayerData()
-                local dataService = require(game:GetService("ReplicatedStorage").Modules.DataService)
-                return dataService:GetData()
-            end
-            local function equippedPets()
-                local playerData = getPlayerData()
-                if not playerData.PetsData then return nil end
-                return playerData.PetsData.EquippedPets
-            end
-            local function getPetNameUsingId(uid)
-                local playerData = getPlayerData()
-                if playerData.PetsData.PetInventory.Data then
-                    local petData = playerData.PetsData.PetInventory.Data[uid]
-                    if petData then
-                        return petData.PetType.." > "..petData.PetData.Name.." > "..string.format("%.2f", petData.PetData.BaseWeight * 1.1).."kg"
-                    end
-                end
-            end
-            local equipped = equippedPets()
-            local namesToId = {}
-            if equipped then
-                for _,id in ipairs(equipped) do
-                    local petName = getPetNameUsingId(id)
-                    table.insert(namesToId, petName.." | "..id)
-                end
-            end
-            dropdown_selectPetsForFeed:Refresh(namesToId)
-        end,
-    })
-
-    local input_autoFeedPercentage = Automation:CreateInput({
-        Name = "Auto feed when Hunger % is:",
-        CurrentValue = "25",
-        PlaceholderText = "number",
-        RemoveTextAfterFocusLost = false,
-        Flag = "autoFeedPercentage",
-        Callback = function(Text) end,
-    })
-
-    local input_autoFeedUntilPercentage = Automation:CreateInput({
-        Name = "Auto feed until % is:",
-        CurrentValue = "100",
-        PlaceholderText = "number",
-        RemoveTextAfterFocusLost = false,
-        Flag = "autoFeedUntilPercentage",
-        Callback = function(Text) end,
-    })
-
-    local dropdown_selectedFruitForAutoFeed = Automation:CreateDropdown({
-        Name = "Select Fruit",
-        Options = seedNames,
-        CurrentOption = {},
-        MultipleOptions = true,
-        Flag = "selectedFruit_autoFeed",
-        Callback = function(Options) end,
-    })
-
-    local autoPetFeedEnabled = false
-    local autoPetFeedThread = nil
-    Automation:CreateToggle({
-        Name = "Auto Feed",
-        CurrentValue = false,
-        Flag = "autoFeed",
-        Callback = function(Value)
-            autoPetFeedEnabled = Value
-            if autoPetFeedEnabled then
-                if autoPetFeedThread then return end
-                beastHubNotify("Auto pet feed running", "", 3)
-                autoPetFeedThread = task.spawn(function()
-                    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                    local function getPlayerData()
-                        return require(ReplicatedStorage.Modules.DataService):GetData()
-                    end
-                    local PetRegistry = require(ReplicatedStorage.Data.PetRegistry.PetList)
-                    local petDefaultHunger = {}
-                    for petName, data in pairs(PetRegistry) do
-                        if type(data) == "table" and data.DefaultHunger then
-                            petDefaultHunger[petName] = data.DefaultHunger
-                        end
-                    end
-
-                    while autoPetFeedEnabled do
-                        local petList = dropdown_selectPetsForFeed.CurrentOption or {}
-                        local fruitList = dropdown_selectedFruitForAutoFeed.CurrentOption or {}
-                        local hungerLimit = tonumber(input_autoFeedPercentage.CurrentValue) or 25
-                        local targetHunger = tonumber(input_autoFeedUntilPercentage.CurrentValue) or 100
-
-                        if #petList > 0 and #fruitList > 0 then
-                            local playerData = getPlayerData()
-                            for _, pet in ipairs(petList) do
-                                local petId = (pet:match("^[^|]+|%s*(.+)$") or ""):match("^%s*(.-)%s*$")
-                                local pData = playerData.PetsData.PetInventory.Data[petId]
-                                if pData then
-                                    local defHunger = petDefaultHunger[pData.PetType]
-                                    if defHunger then
-                                        local hungerPct = (pData.PetData.Hunger / defHunger) * 100
-                                        if hungerPct <= hungerLimit then
-                                            while hungerPct < targetHunger and autoPetFeedEnabled do
-                                                local fruitUid = nil
-                                                for uid, item in pairs(playerData.InventoryData) do
-                                                    if item.ItemType == "Holdable" and table.find(fruitList, item.ItemData.ItemName) then
-                                                        fruitUid = uid
-                                                        break
-                                                    end
-                                                end
-                                                if fruitUid then
-                                                    ReplicatedStorage.GameEvents.ActivePetService:FireServer("Feed", petId)
-                                                    task.wait(0.2)
-                                                    playerData = getPlayerData()
-                                                    pData = playerData.PetsData.PetInventory.Data[petId]
-                                                    hungerPct = (pData.PetData.Hunger / defHunger) * 100
-                                                else
-                                                    break
-                                                end
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                        task.wait(2)
-                    end
-                    autoPetFeedThread = nil
-                end)
-            end
-        end,
-    })
-
-    Automation:CreateDivider()
-
-    -- CUSTOM
-
-    -- END
-end
 
 local function antiAFK()
     -- Prevent multiple connections
@@ -5404,13 +4299,16 @@ antiAFK()
 
 -- LOAD CONFIG / must be the last part of everything 
 local success, err = pcall(function()
-    Rayfield:LoadConfiguration() -- Load config
-    local playerNameWebhook = game.Players.LocalPlayer.Name
-    local url = "https://discord.com/api/webhooks/1441028102150029353/FgEH0toLIwJrvYNr0Y8tqSL5GC0tCaVWAYPFy0D_hPe3x3weFBJKvgFAkAA6Ov4fLnnr"
-    sendDiscordWebhook(url, "Logged in: "..playerNameWebhook)
-end)
+        Rayfield:LoadConfiguration() -- Load config
+        local playerNameWebhook = game.Players.LocalPlayer.Name
+        local url = "https://discord.com/api/webhooks/1441028102150029353/FgEH0toLIwJrvYNr0Y8tqSL5GC0tCaVWAYPFy0D_hPe3x3weFBJKvgFAkAA6Ov4fLnnr"
+        if sendDiscordWebhook then
+            sendDiscordWebhook(url, "Logged in: "..playerNameWebhook)
+        end
+    end)
 if success then
-    print("Config file loaded")
-else
-    print("Error loading config file "..err)
-end
+        print("Config file loaded")
+    else
+        print("Error loading config file "..err)
+    end
+end 
