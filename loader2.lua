@@ -4216,7 +4216,7 @@ local Toggle_disableEggCollision = PetEggs:CreateToggle({
 PetEggs:CreateDivider()
 
 --== Misc>Performance
-loadstring(game:HttpGet("https://pastebin.com/raw/RJfE11ae"))()
+loadstring(game:HttpGet("https://pastebin.com/raw/2iwTgYyf"))()
 miscModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, equipItemByNameV2, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
 
 
