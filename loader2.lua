@@ -1342,6 +1342,16 @@ local smartAutoHatchingEnabled = false
 local smartAutoHatchingThread = nil
 
 local sessionHugeList = {}
+local eggRefundEnabled = false
+local Toggle_eggRefund = PetEggs:CreateToggle({
+    Name = "Egg Refund",
+    CurrentValue = false,
+    Flag = "eggRefund",
+    Callback = function(Value)
+        eggRefundEnabled = Value
+    end,
+})
+
 local Toggle_smartAutoHatch = PetEggs:CreateToggle({
     Name = "SMART Auto Hatching",
     CurrentValue = false,
@@ -1598,7 +1608,21 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                         --=======================================
                         --trigger auto sell first before back to eagles
                         task.wait(5)
-                        if sealsLoady and sealsLoady ~= "None" and smartAutoHatchingEnabled then
+
+                        local function handlePostHatch()
+                            --back to incubating loadout
+                            task.wait(2)
+                            beastHubNotify("Back to incubating", "", 6)
+                            Toggle_autoPlaceEggs:Set(true)
+                            -- Resume cancel animation after switching back to eagles/incubating loadout
+                            cancelAnimationPaused = false
+                            task.wait(6)
+                        end
+
+                        if eggRefundEnabled then
+                            beastHubNotify("Egg Refund Enabled", "Skipping sell, placing eggs again", 5)
+                            handlePostHatch()
+                        elseif sealsLoady and sealsLoady ~= "None" and smartAutoHatchingEnabled then
                             game.Players.LocalPlayer.Character.Humanoid:UnequipTools() --prevention
                             beastHubNotify("Switching to seals", "Auto sell triggered", 10)
                             myFunctions.switchToLoadout(sealsLoady)
@@ -1619,6 +1643,7 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                                     --print("Now switching back to main loadout...")
                                     task.wait(2)
                                     myFunctions.switchToLoadout(incubatingLoady)
+                                    handlePostHatch()
                                 end)
                             end)
                             if success then
@@ -1626,21 +1651,11 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                             else
                                 warn("Auto Sell failed with error: " .. tostring(err))
                                 beastHubNotify("Auto Sell Failed!", tostring(err), 5)
+                                handlePostHatch()
                             end
                         else
-                            --this part of logic might not be possible but keeping this for now
-                            -- warn("No Seals Loadout found, skipping auto-sell.")
+                            handlePostHatch()
                         end
-
-
-                        --back to incubating loadout
-                        task.wait(2)
-                        beastHubNotify("Back to incubating", "", 6)
-                        Toggle_autoPlaceEggs:Set(true)
-                        --myFunctions.switchToLoadout(incubatingLoady) --loadout switch was done in the callback of auto sell
-                        -- Resume cancel animation after switching back to eagles/incubating loadout
-                        cancelAnimationPaused = false
-                        task.wait(6)
                     else
                         beastHubNotify("Eggs not ready yet", "Waiting..", 3)
                         task.wait(15)
