@@ -72,7 +72,9 @@ local function beastHubNotify(title, message, duration)
 end
 
 local miscModule = require(script.Parent:WaitForChild("misc"))
-miscModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, nil, nil, nil, nil, nil, nil)
+pcall(function()
+    miscModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, nil, nil, nil, nil, nil, nil)
+end)
 
 local Shops = Window:CreateTab("Shops", "circle-dollar-sign")
 local Pets = Window:CreateTab("Pets", "cat")
@@ -4216,7 +4218,7 @@ local Toggle_disableEggCollision = PetEggs:CreateToggle({
 PetEggs:CreateDivider()
 
 --== Misc>Performance
-loadstring(game:HttpGet("https://pastebin.com/raw/2iwTgYyf"))()
+loadstring(game:HttpGet("https://pastebin.com/raw/t7sE9brU"))()
 miscModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, equipItemByNameV2, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
 
 
