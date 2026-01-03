@@ -81,6 +81,33 @@ local PetEggs = Window:CreateTab("Eggs", "egg")
 local Automation = Window:CreateTab("Automation", "bot")
 local Custom = Window:CreateTab("Custom", "sparkles")
 local Misc = Window:CreateTab("Misc", "code")
+    -- Clear Spider Webs feature
+local clearSpiderWebsEnabled = false
+Misc:CreateToggle({
+    Name = "Clear Spider Webs",
+    CurrentValue = false,
+    Flag = "ClearSpiderWebs",
+    Callback = function(Value)
+        clearSpiderWebsEnabled = Value
+        if Value then
+            for _, v in pairs(game.Workspace:GetChildren()) do
+                if v.Name == "Web" or v.Name == "SpiderWeb" then
+                    v:Destroy()
+                end
+            end
+        end
+    end,
+})
+task.spawn(function()
+    game.Workspace.ChildAdded:Connect(function(child)
+        if clearSpiderWebsEnabled then
+            if child.Name == "Web" or child.Name == "SpiderWeb" then
+                task.wait()
+                child:Destroy()
+            end
+        end
+    end)
+end)
 local Event = Window:CreateTab("Event", "gift")
 
 -- Shared variables for cancel animation control
