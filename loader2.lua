@@ -4232,47 +4232,6 @@ Misc:CreateButton({
 Misc:CreateDivider()
 
 Misc:CreateSection("Performance")
-local clearSpiderWebsEnabled = false
- Misc:CreateToggle({
-        Name = "Clear Spider Webs",
-        CurrentValue = false,
-        Flag = "clearSpiderWebs",
-        Callback = function(Value)
-            clearSpiderWebsEnabled = Value
-            if Value then
-                local function clearWebs()
-                    for _, v in pairs(game.Workspace:GetDescendants()) do
-                    if v.Name == "Web" or v.Name == "SpiderWeb" or (v:IsA("BasePart") and string.find(string.lower(v.Name), "web")) then
-                            v.Transparency = 1
-                            v.CanCollide = false
-                            if v:FindFirstChild("ParticleEmitter") then
-                                v.ParticleEmitter.Enabled = false
-                            end
-                        end
-                    end
-                    end
-                pcall(clearWebs)
-            end
-        end,
-    })
-    -- Monitor new webs
-    game.Workspace.DescendantAdded:Connect(function(descendant)
-        if clearSpiderWebsEnabled then
-            if descendant.Name == "Web" or descendant.Name == "SpiderWeb" or (descendant:IsA("BasePart") and string.find(string.lower(descendant.Name), "web")) then
-                task.wait() 
-                -- wait for properties to load
-                pcall(function()
-                    descendant.Transparency = 1
-                    descendant.CanCollide = false
-                    if descendant:FindFirstChild("ParticleEmitter") then
-                        descendant.ParticleEmitter.Enabled = false
-                    end
-                end)
-            end
-        end
-    end)
-    Misc:CreateDivider()
-    
 --Hide other player's Farm
 local Toggle_hideOtherFarm = Misc:CreateToggle({
     Name = "Hide Other Player's Farm",
