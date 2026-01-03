@@ -81,6 +81,91 @@ local PetEggs = Window:CreateTab("Eggs", "egg")
 local Automation = Window:CreateTab("Automation", "bot")
 local Custom = Window:CreateTab("Custom", "sparkles")
 local Misc = Window:CreateTab("Misc", "code")
+
+Misc:CreateSection("Performance")
+local fpsBoostEnabled = false
+local clearSpiderWebsEnabled = false
+
+Misc:CreateToggle({
+    Name = "Clear Spider Webs",
+    CurrentValue = false,
+    Flag = "clearSpiderWebs",
+    Callback = function(Value)
+        clearSpiderWebsEnabled = Value
+        if Value then
+            local function clearWebs()
+                for _, v in pairs(game.Workspace:GetDescendants()) do
+                    if v.Name == "Web" or v.Name == "SpiderWeb" or (v:IsA("BasePart") and string.find(string.lower(v.Name), "web")) then
+                        v.Transparency = 1
+                        v.CanCollide = false
+                        if v:FindFirstChild("ParticleEmitter") then
+                            v.ParticleEmitter.Enabled = false
+                        end
+                    end
+                end
+            end
+            pcall(clearWebs)
+        end
+    end,
+})
+
+-- Monitor new webs
+game.Workspace.DescendantAdded:Connect(function(descendant)
+    if clearSpiderWebsEnabled then
+        if descendant.Name == "Web" or descendant.Name == "SpiderWeb" or (descendant:IsA("BasePart") and string.find(string.lower(descendant.Name), "web")) then
+            task.wait() -- wait for properties to load
+            pcall(function()
+                descendant.Transparency = 1
+                descendant.CanCollide = false
+                if descendant:FindFirstChild("ParticleEmitter") then
+                    descendant.ParticleEmitter.Enabled = false
+                end
+            end)
+        end
+    end
+end)
+
+Misc:CreateToggle({
+    Name = "Boost FPS",
+    CurrentValue = false,
+    Flag = "boostFPS",
+    Callback = function(Value)
+        fpsBoostEnabled = Value
+        if Value then
+            local function boost()
+                local settings = settings()
+                local network = game:GetService("NetworkClient")
+                local run = game:GetService("RunService")
+                
+                -- Disable basic rendering effects
+                game.Lighting.GlobalShadows = false
+                game.Lighting.FogEnd = 9e9
+                game.Lighting.Brightness = 0
+                
+                for _, v in pairs(game:GetDescendants()) do
+                    if v:IsA("Part") or v:IsA("UnionOperation") or v:IsA("MeshPart") or v:IsA("CornerWedgePart") or v:IsA("TrussPart") then
+                        v.Material = Enum.Material.Plastic
+                        v.Reflectance = 0
+                    elseif v:IsA("Decal") or v:IsA("Texture") then
+                        v.Transparency = 1
+                    elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+                        v.Enabled = false
+                    elseif v:IsA("Explosion") then
+                        v.Visible = false
+                    elseif v:IsA("Fire") or v:IsA("SpotLight") or v:IsA("Smoke") or v:IsA("Sparkles") then
+                        v.Enabled = false
+                    end
+                end
+                
+                game.Lighting:ClearAllChildren()
+                beastHubNotify("FPS Boost Enabled", "Graphics lowered and effects disabled.", 5)
+            end
+            pcall(boost)
+        else
+            beastHubNotify("FPS Boost", "Please rejoin to restore full graphics.", 5)
+        end
+    end,
+})
 local Event = Window:CreateTab("Event", "gift")
 
 -- Shared variables for cancel animation control
