@@ -81,32 +81,55 @@ local PetEggs = Window:CreateTab("Eggs", "egg")
 local Automation = Window:CreateTab("Automation", "bot")
 local Custom = Window:CreateTab("Custom", "sparkles")
 local Misc = Window:CreateTab("Misc", "code")
-    -- Clear Spider Webs feature
+
+Misc:CreateSection("Performance")
+-- local fpsBoostEnabled = false
 local clearSpiderWebsEnabled = false
+
 Misc:CreateToggle({
     Name = "Clear Spider Webs",
     CurrentValue = false,
-    Flag = "ClearSpiderWebs",
+    Flag = "clearSpiderWebs",
     Callback = function(Value)
         clearSpiderWebsEnabled = Value
         if Value then
-            for _, v in pairs(game.Workspace:GetChildren()) do
-                if v.Name == "Web" or v.Name == "SpiderWeb" then
-                    v:Destroy()
+            local function clearWebs()
+                for _, v in pairs(game.Workspace:GetDescendants()) do
+                    if v.Name == "Web" or v.Name == "SpiderWeb" or (v:IsA("BasePart") and string.find(string.lower(v.Name), "web")) then
+                        pcall(function()
+                            v.Transparency = 1
+                            v.CanCollide = false
+                            if v:FindFirstChild("ParticleEmitter") then
+                                v.ParticleEmitter.Enabled = false
+                            end
+                        end)
+                        end
                 end
             end
+            task.spawn(function()
+                while clearSpiderWebsEnabled do
+                    pcall(clearWebs)
+                    task.wait(1)
+                end
+            end)
         end
     end,
 })
-task.spawn(function()
-    game.Workspace.ChildAdded:Connect(function(child)
-        if clearSpiderWebsEnabled then
-            if child.Name == "Web" or child.Name == "SpiderWeb" then
-                task.wait()
-                child:Destroy()
-            end
+
+-- Monitor new webs
+game.Workspace.DescendantAdded:Connect(function(descendant)
+    if clearSpiderWebsEnabled then
+        if descendant.Name == "Web" or descendant.Name == "SpiderWeb" or (descendant:IsA("BasePart") and string.find(string.lower(descendant.Name), "web")) then
+            task.wait() -- wait for properties to load
+            pcall(function()
+                descendant.Transparency = 1
+                descendant.CanCollide = false
+                if descendant:FindFirstChild("ParticleEmitter") then
+                    descendant.ParticleEmitter.Enabled = false
+                end
+            end)
         end
-    end)
+    end
 end)
 local Event = Window:CreateTab("Event", "gift")
 
