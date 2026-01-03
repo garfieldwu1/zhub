@@ -1621,8 +1621,9 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                         end
 
                         if eggRefundEnabled and eggRefundCycle == 1 then
-                            beastHubNotify("Egg Refund (Cycle 1)", "Skipping sell, placing eggs again", 5)
+                            beastHubNotify("Egg Refund (Cycle 1)", "Switching back to Eagles loadout", 5)
                             eggRefundCycle = 2
+                            myFunctions.switchToLoadout(incubatingLoady)
                             handlePostHatch()
                         elseif sealsLoady and sealsLoady ~= "None" and smartAutoHatchingEnabled then
                             if eggRefundEnabled then
