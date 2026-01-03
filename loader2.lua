@@ -71,16 +71,14 @@ local function beastHubNotify(title, message, duration)
     })
 end
 
-local mainModule = loadstring(game:HttpGet("https://pastebin.com/raw/K4yBnmbf"))()
-mainModule.init(Rayfield, beastHubNotify, Window, myFunctions, reloadScript, beastHubIcon)
+local miscModule = require(script.Parent:WaitForChild("misc"))
+miscModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, nil, nil, nil, nil, nil, nil)
 
-do
 local Shops = Window:CreateTab("Shops", "circle-dollar-sign")
 local Pets = Window:CreateTab("Pets", "cat")
 local PetEggs = Window:CreateTab("Eggs", "egg")
 local Automation = Window:CreateTab("Automation", "bot")
 local Custom = Window:CreateTab("Custom", "sparkles")
---local Misc = Window:CreateTab("Misc", "code")
 local Event = Window:CreateTab("Event", "gift")
 
 -- Shared variables for cancel animation control
@@ -4219,7 +4217,7 @@ PetEggs:CreateDivider()
 
 --== Misc>Performance
 loadstring(game:HttpGet("https://pastebin.com/raw/RJfE11ae"))()
-AutomationModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, equipItemByNameV2, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
+miscModule.init(Rayfield, beastHubNotify, Window, myFunctions, beastHubIcon, equipItemByName, equipItemByNameV2, getMyFarm, getFarmSpawnCFrame, getAllPetNames, sendDiscordWebhook)
 
 
 
@@ -5198,7 +5196,6 @@ Event:CreateButton({
     -- CUSTOM
 
     -- END
-end
 
 local function antiAFK()
     -- Prevent multiple connections
