@@ -1340,6 +1340,7 @@ task.wait(.5) --to wait for loadout variables to load
 --Only two variables needed
 local smartAutoHatchingEnabled = false
 local smartAutoHatchingThread = nil
+local eggRefundCycle = 1
 
 local sessionHugeList = {}
 local eggRefundEnabled = false
@@ -1619,12 +1620,18 @@ local Toggle_smartAutoHatch = PetEggs:CreateToggle({
                             task.wait(6)
                         end
 
-                        if eggRefundEnabled then
-                            beastHubNotify("Egg Refund Enabled", "Skipping sell, placing eggs again", 5)
+                        if eggRefundEnabled and eggRefundCycle == 1 then
+                            beastHubNotify("Egg Refund (Cycle 1)", "Skipping sell, placing eggs again", 5)
+                            eggRefundCycle = 2
                             handlePostHatch()
                         elseif sealsLoady and sealsLoady ~= "None" and smartAutoHatchingEnabled then
+                            if eggRefundEnabled then
+                                beastHubNotify("Egg Refund (Cycle 2)", "Auto sell triggered", 5)
+                                eggRefundCycle = 1
+                            else
+                                beastHubNotify("Switching to seals", "Auto sell triggered", 10)
+                            end
                             game.Players.LocalPlayer.Character.Humanoid:UnequipTools() --prevention
-                            beastHubNotify("Switching to seals", "Auto sell triggered", 10)
                             myFunctions.switchToLoadout(sealsLoady)
                             game.Players.LocalPlayer.Character.Humanoid:UnequipTools() --prevention
                             task.wait(1)
